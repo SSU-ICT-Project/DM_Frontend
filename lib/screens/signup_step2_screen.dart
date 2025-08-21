@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'motivation_type_screen.dart';
+import '../models/user_model.dart';
 
 class SignupStep2Screen extends StatefulWidget {
   const SignupStep2Screen({super.key});
@@ -13,6 +14,7 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen> {
   final TextEditingController _nicknameController = TextEditingController();
   final TextEditingController _jobController = TextEditingController();
   final TextEditingController _birthYearController = TextEditingController();
+  final TextEditingController _prepTimeController = TextEditingController(); // 평균 외출 준비 시간 컨트롤러 추가
 
   bool _permissionAllowed = true;
 
@@ -21,6 +23,7 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen> {
     _nicknameController.dispose();
     _jobController.dispose();
     _birthYearController.dispose();
+    _prepTimeController.dispose(); // 컨트롤러 해제
     super.dispose();
   }
 
@@ -126,12 +129,28 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 20), // 간격 조정
 
+              // 평균 외출 준비 시간
+              Text(
+                '평균 외출 준비 시간',
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 1.21,
+                ),
+              ),
+              const SizedBox(height: 6),
+              _GrayInputBox(
+                controller: _prepTimeController,
+                hintText: '예: 30분, 1시간 (선택 사항)',
+                keyboardType: TextInputType.text,
+              ),
               const SizedBox(height: 32),
 
 
-
-              const SizedBox(height: 24),
+              const SizedBox(height: 24), // 이 SizedBox는 페이지 하단 여백을 위한 것일 수 있으므로 유지
             ],
           ),
         ),
@@ -148,7 +167,8 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () {
-                // 다음 화면(동기부여 타입 선택)으로 이동
+                // 간단 세션에 닉네임 저장
+                UserSession.nickname = _nicknameController.text.trim().isEmpty ? null : _nicknameController.text.trim();
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const MotivationTypeScreen()),
                 );
@@ -176,6 +196,7 @@ class _GrayInputBox extends StatelessWidget {
   final TextInputType? keyboardType;
 
   const _GrayInputBox({
+    super.key, // super.key 추가
     required this.controller,
     required this.hintText,
     this.keyboardType,
@@ -211,5 +232,3 @@ class _GrayInputBox extends StatelessWidget {
     );
   }
 }
-
-

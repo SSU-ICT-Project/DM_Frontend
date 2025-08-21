@@ -7,6 +7,7 @@ import 'signup_step1_screen.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../utils/slide_page_route.dart';
 import 'calendar_screen.dart';
+import 'goals_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -17,6 +18,7 @@ class SettingsScreen extends StatelessWidget {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
+        automaticallyImplyLeading: false,
         title: Text(
           '설정',
           style: GoogleFonts.inter(
@@ -24,10 +26,6 @@ class SettingsScreen extends StatelessWidget {
             fontWeight: FontWeight.w500,
             color: const Color(0xFFFF504A),
           ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: ListView(
@@ -103,10 +101,24 @@ class SettingsScreen extends StatelessWidget {
       bottomNavigationBar: AppBottomNav(
         currentIndex: 2,
         onTap: (i) {
-          if (i == 1) Navigator.of(context).pop();
+          if (i == 1) {
+            Navigator.of(context).pushAndRemoveUntil(
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const GoalsScreen(),
+                transitionDuration: Duration.zero,
+                reverseTransitionDuration: Duration.zero,
+              ),
+              (route) => false,
+            );
+          }
           if (i == 0) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const CalendarScreen()),
+            Navigator.of(context).pushAndRemoveUntil(
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const CalendarScreen(),
+                transitionDuration: Duration.zero,
+                reverseTransitionDuration: Duration.zero,
+              ),
+              (route) => false,
             );
           }
         },

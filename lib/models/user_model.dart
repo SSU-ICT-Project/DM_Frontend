@@ -1,3 +1,5 @@
+import 'motivation.dart';
+
 class SignUpData {
   String email;
   String password;
@@ -29,4 +31,11 @@ class SignUpData {
       'gender': gender,
     };
   }
+}
+
+// 간단한 세션 홀더 (임시)
+class UserSession {
+  static String? nickname;
+  static String? name;
+  static MotivationType? motivationType;
 }

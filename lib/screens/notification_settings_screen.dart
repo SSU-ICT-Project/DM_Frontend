@@ -33,21 +33,27 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             title: '서비스 알림',
             subtitle: '앱 서비스 관련 주요 소식을 받아요',
             value: _serviceNotification,
-            onChanged: (v) => setState(() => _serviceNotification = v),
+            onChanged: (v) => setState(() {
+              _serviceNotification = v;
+              if (!v) {
+                _nightPush = false;
+                _calendarNotification = false;
+              }
+            }),
           ),
           const _Divider(),
           _SwitchTile(
             title: '야간 푸시 알림',
             subtitle: '야간 시간대에도 푸시 알림을 받아요',
-            value: _nightPush,
-            onChanged: (v) => setState(() => _nightPush = v),
+            value: _serviceNotification ? _nightPush : false,
+            onChanged: _serviceNotification ? (v) => setState(() => _nightPush = v) : null,
           ),
           const _Divider(),
           _SwitchTile(
             title: '캘린더 알림',
             subtitle: '일정 및 목표가 캘린더에 반영될 때 알려줘요',
-            value: _calendarNotification,
-            onChanged: (v) => setState(() => _calendarNotification = v),
+            value: _serviceNotification ? _calendarNotification : false,
+            onChanged: _serviceNotification ? (v) => setState(() => _calendarNotification = v) : null,
           ),
         ],
       ),
@@ -67,7 +73,7 @@ class _SwitchTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
 
   const _SwitchTile({
     required this.title,

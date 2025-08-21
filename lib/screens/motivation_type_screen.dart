@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'goals_screen.dart';
+import '../models/user_model.dart';
+import '../models/motivation.dart' as model;
 
-enum MotivationType {
-  emotional, // 감성 자극형
-  futureVision, // 미래/비전 제시형
-  action, // 구체적 행동 제시형
-  competition, // 비교/경쟁 자극형
-}
+typedef MotivationType = model.MotivationType;
 
 class MotivationTypeScreen extends StatefulWidget {
   const MotivationTypeScreen({super.key});
@@ -56,7 +53,7 @@ class _MotivationTypeScreenState extends State<MotivationTypeScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                '어떤 멘트가 지환님이 유튜브를 끄도록 만드나요?',
+                '어떤 멘트가 ${(UserSession.nickname ?? UserSession.name ?? '사용자')}님이 유튜브를 끄도록 만드나요?',
                 style: GoogleFonts.inter(
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
@@ -134,7 +131,7 @@ class _MotivationTypeScreenState extends State<MotivationTypeScreen> {
               onPressed: _selectedType == null
                   ? null
                   : () {
-                      // 선택된 타입을 저장하는 로직은 이후 상태관리 도입 시 연결
+                      UserSession.motivationType = _selectedType;
                       Navigator.of(context).pushAndRemoveUntil(
                         MaterialPageRoute(builder: (_) => const GoalsScreen()),
                         (route) => false,

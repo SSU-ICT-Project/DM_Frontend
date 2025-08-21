@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../utils/slide_page_route.dart';
+import '../models/user_model.dart';
+import '../models/motivation.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});
@@ -45,6 +47,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             _LabeledField(label: '직업', controller: _jobController, hint: '직업을 입력하세요'),
             const SizedBox(height: 16),
             _LabeledField(label: '생년', controller: _birthYearController, hint: 'YYYY'),
+            const SizedBox(height: 24),
+            Text('동기부여 타입', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+            const SizedBox(height: 8),
+            _MotivationTypeChooser(
+              value: UserSession.motivationType ?? MotivationType.emotional,
+              onChanged: (v) => setState(() => UserSession.motivationType = v),
+            ),
             const Spacer(),
             SizedBox(
               width: double.infinity,
@@ -116,6 +125,32 @@ class _SettingsBottomNav extends StatelessWidget {
           Navigator.of(context).popUntil((route) => route.isFirst);
         }
       },
+    );
+  }
+}
+
+class _MotivationTypeChooser extends StatelessWidget {
+  final MotivationType value;
+  final ValueChanged<MotivationType> onChanged;
+  const _MotivationTypeChooser({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final t in MotivationType.values)
+          RadioListTile<MotivationType>(
+            value: t,
+            groupValue: value,
+            onChanged: (v) => v != null ? onChanged(v) : null,
+            title: Text(
+              motivationTypeLabel(t),
+              style: GoogleFonts.inter(color: Colors.white),
+            ),
+            activeColor: const Color(0xFFFF504A),
+          ),
+      ],
     );
   }
 }

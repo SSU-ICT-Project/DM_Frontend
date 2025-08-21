@@ -135,11 +135,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
               child: Text('수정', style: TextStyle(color: Colors.blueAccent[100])),
               onPressed: () {
                 Navigator.of(dialogContext).pop();
-                // TODO: Implement edit functionality
-                print('Edit goal $goalId');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('"${goal.title}"목표 수정 기능은 준비 중입니다.')),
-                );
+                _editGoal(goalId);
               },
             ),
             TextButton(
@@ -159,6 +155,25 @@ class _GoalsScreenState extends State<GoalsScreen> {
         );
       },
     );
+  }
+
+  Future<void> _editGoal(String goalId) async {
+    final index = _goals.indexWhere((g) => g.id == goalId);
+    if (index == -1) return;
+    final goal = _goals[index];
+    final result = await showDialog<_GoalEditResult>(
+      context: context,
+      builder: (context) => _EditGoalDialog(
+        initialTitle: goal.title,
+        initialDeadline: goal.deadline,
+        initialSubGoals: goal.subGoals,
+      ),
+    );
+    if (result == null) return;
+    setState(() {
+      _goals[index] = goal.copyWith(title: result.title, deadline: result.deadline, subGoals: result.subGoals);
+      _applySort();
+    });
   }
 
   void _addGoal() async {
@@ -287,13 +302,23 @@ class _GoalsScreenState extends State<GoalsScreen> {
       ),
       bottomNavigationBar: AppBottomNav(currentIndex: 1, onTap: (i) {
         if (i == 2) {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const SettingsScreen()),
+          Navigator.of(context).pushAndRemoveUntil(
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) => const SettingsScreen(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+            (route) => false,
           );
         }
         if (i == 0) {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CalendarScreen()),
+          Navigator.of(context).pushAndRemoveUntil(
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) => const CalendarScreen(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+            (route) => false,
           );
         }
       }),
@@ -659,6 +684,183 @@ class _AddGoalDialogState extends State<_AddGoalDialog> {
           child: const Text('추가'),
         ),
       ],
+    );
+  }
+}
+
+class _GoalEditResult {
+  final String title;
+  final DateTime? deadline;
+  final List<SubGoal> subGoals;
+  const _GoalEditResult(this.title, this.deadline, this.subGoals);
+}
+
+class _EditGoalDialog extends StatefulWidget {
+  final String initialTitle;
+  final DateTime? initialDeadline;
+  final List<SubGoal> initialSubGoals;
+  const _EditGoalDialog({required this.initialTitle, required this.initialDeadline, required this.initialSubGoals});
+
+  @override
+  State<_EditGoalDialog> createState() => _EditGoalDialogState();
+}
+
+class _EditGoalDialogState extends State<_EditGoalDialog> {
+  late TextEditingController _titleController;
+  DateTime? _deadline;
+  late List<SubGoal> _subs;
+  final TextEditingController _newSubController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.initialTitle);
+    _deadline = widget.initialDeadline;
+    _subs = List<SubGoal>.from(widget.initialSubGoals);
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _newSubController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.grey[900],
+      title: Text('목표 수정', style: GoogleFonts.inter(color: Colors.white)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(labelText: '목표 제목', labelStyle: TextStyle(color: Colors.white70)),
+              style: const TextStyle(color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _deadline == null ? '마감일 없음' : '마감일: ${_deadline!.toLocal().toString().split(' ').first}',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final now = DateTime.now();
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _deadline ?? now,
+                      firstDate: DateTime(now.year - 1),
+                      lastDate: DateTime(now.year + 5),
+                    );
+                    if (picked != null) setState(() => _deadline = picked);
+                  },
+                  child: const Text('마감일 선택'),
+                ),
+              ],
+            ),
+            const Divider(color: Colors.white24),
+            Text('하위 목표', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _newSubController,
+                    decoration: const InputDecoration(labelText: '하위 목표 추가', labelStyle: TextStyle(color: Colors.white70)),
+                    style: const TextStyle(color: Colors.white),
+                    onSubmitted: (v) => _addSub(),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add, color: Colors.white70),
+                  onPressed: _addSub,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ..._subs.map((s) => _EditableSubGoalTile(
+                  sub: s,
+                  onChanged: (text) => _renameSub(s.id, text),
+                  onDelete: () => _removeSub(s.id),
+                )),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소', style: TextStyle(color: Colors.white70))),
+        FilledButton(
+          onPressed: () {
+            final title = _titleController.text.trim();
+            if (title.isEmpty) return;
+            Navigator.pop(context, _GoalEditResult(title, _deadline, _subs));
+          },
+          child: const Text('저장'),
+        ),
+      ],
+    );
+  }
+
+  void _addSub() {
+    final text = _newSubController.text.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      _subs.add(SubGoal(id: UniqueKey().toString(), title: text, createdAt: DateTime.now()));
+      _newSubController.clear();
+    });
+  }
+
+  void _renameSub(String id, String text) {
+    setState(() {
+      _subs = _subs
+          .map((s) => s.id == id ? s.copyWith(title: text) : s)
+          .toList(growable: false);
+    });
+  }
+
+  void _removeSub(String id) {
+    setState(() {
+      _subs.removeWhere((s) => s.id == id);
+    });
+  }
+}
+
+class _EditableSubGoalTile extends StatelessWidget {
+  final SubGoal sub;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onDelete;
+  const _EditableSubGoalTile({required this.sub, required this.onChanged, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = TextEditingController(text: sub.title);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: '하위 목표 제목',
+                labelStyle: TextStyle(color: Colors.white54),
+              ),
+              onChanged: onChanged,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+            onPressed: onDelete,
+          ),
+        ],
+      ),
     );
   }
 }

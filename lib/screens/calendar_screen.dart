@@ -107,13 +107,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
         currentIndex: 0,
         onTap: (i) {
           if (i == 1) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const GoalsScreen()),
+            Navigator.of(context).pushAndRemoveUntil(
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const GoalsScreen(),
+                transitionDuration: Duration.zero,
+                reverseTransitionDuration: Duration.zero,
+              ),
+              (route) => false,
             );
           }
           if (i == 2) {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            Navigator.of(context).pushAndRemoveUntil(
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const SettingsScreen(),
+                transitionDuration: Duration.zero,
+                reverseTransitionDuration: Duration.zero,
+              ),
+              (route) => false,
             );
           }
         },
@@ -545,16 +555,21 @@ class _DarkInput extends StatelessWidget {
       decoration: BoxDecoration(color: const Color(0xFF2B2B2B), borderRadius: BorderRadius.circular(12)),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       height: maxLines == 1 ? 56 : null,
-      child: TextField(
-        controller: controller,
-        maxLines: maxLines,
-        readOnly: readOnly,
-        onTap: onTap,
-        decoration: InputDecoration.collapsed(
-          hintText: hint,
-          hintStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w400, color: const Color(0xFF9E9E9E)),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: TextField(
+          controller: controller,
+          maxLines: maxLines,
+          readOnly: readOnly,
+          onTap: onTap,
+          textAlign: TextAlign.start,
+          textAlignVertical: maxLines == 1 ? TextAlignVertical.center : null,
+          decoration: InputDecoration.collapsed(
+            hintText: hint,
+            hintStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w400, color: const Color(0xFF9E9E9E)),
+          ),
+          style: GoogleFonts.inter(fontSize: 17, color: Colors.white),
         ),
-        style: GoogleFonts.inter(fontSize: 16, color: Colors.white),
       ),
     );
   }
@@ -715,18 +730,26 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _DarkInput(controller: _query, hint: '장소 검색'),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF504A), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  onPressed: _search,
-                  child: const Text('검색'),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('위치', style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(child: _DarkInput(controller: _query, hint: '장소 검색')),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        height: 44,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF504A), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                          onPressed: _search,
+                          child: const Text('검색'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 12),
