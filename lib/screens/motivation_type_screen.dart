@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'goals_screen.dart';
 
 enum MotivationType {
   emotional, // 감성 자극형
@@ -133,15 +134,10 @@ class _MotivationTypeScreenState extends State<MotivationTypeScreen> {
               onPressed: _selectedType == null
                   ? null
                   : () {
-                      // TODO: 선택 결과 저장 및 다음 화면 이동
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            '선택됨: ${_labelOf(_selectedType!)}',
-                            style: GoogleFonts.inter(color: Colors.white),
-                          ),
-                          behavior: SnackBarBehavior.floating,
-                        ),
+                      // 선택된 타입을 저장하는 로직은 이후 상태관리 도입 시 연결
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const GoalsScreen()),
+                        (route) => false,
                       );
                     },
               child: Text(

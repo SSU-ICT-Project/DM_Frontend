@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 // 우리가 만들었던 첫 번째 회원가입 화면 파일을 import 합니다.
 // 파일 경로는 실제 프로젝트 구조에 맞게 조정해야 할 수 있습니다.
 import 'screens/signup_step1_screen.dart';
+import 'screens/goals_screen.dart';
 
 // 모든 Flutter 앱의 시작점!
 void main() {
@@ -26,7 +27,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       // 앱이 처음 시작될 때 보여줄 화면을 지정합니다.
-      home: const SignupStep1Screen(),
+      home: const GoalsScreen(),
     );
   }
 }
