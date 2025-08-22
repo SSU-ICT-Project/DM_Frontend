@@ -71,37 +71,39 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                Text(monthLabel, style: GoogleFonts.inter(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
-                const Spacer(),
-                _NavButton(icon: Icons.chevron_left, onTap: () => _changeMonth(-1)),
-                const SizedBox(width: 8),
-                _NavButton(icon: Icons.chevron_right, onTap: () => _changeMonth(1)),
-              ],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  Text(monthLabel, style: GoogleFonts.inter(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  _NavButton(icon: Icons.chevron_left, onTap: () => _changeMonth(-1)),
+                  const SizedBox(width: 8),
+                  _NavButton(icon: Icons.chevron_right, onTap: () => _changeMonth(1)),
+                ],
+              ),
             ),
-          ),
-          const _WeekdayHeader(),
-          const SizedBox(height: 8),
-          _MonthGrid(
-            visibleMonth: _visibleMonth,
-            selectedDate: _selectedDate,
-            hasEvents: (day) => _eventsOf(day).isNotEmpty,
-            onSelect: (day) => setState(() => _selectedDate = day),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: _EventList(
+            const _WeekdayHeader(),
+            const SizedBox(height: 8),
+            _MonthGrid(
+              visibleMonth: _visibleMonth,
+              selectedDate: _selectedDate,
+              hasEvents: (day) => _eventsOf(day).isNotEmpty,
+              onSelect: (day) => setState(() => _selectedDate = day),
+            ),
+            const SizedBox(height: 12),
+            _EventList(
               date: _selectedDate,
               events: selectedEvents,
               onEdit: (e) => _openEventEditor(context, existing: e),
+              shrinkWrapped: true,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       bottomNavigationBar: AppBottomNav(
         currentIndex: 0,
@@ -306,8 +308,9 @@ class _EventList extends StatelessWidget {
   final DateTime? date;
   final List<EventItem> events;
   final void Function(EventItem e) onEdit;
+  final bool shrinkWrapped;
 
-  const _EventList({required this.date, required this.events, required this.onEdit});
+  const _EventList({required this.date, required this.events, required this.onEdit, this.shrinkWrapped = false});
 
   @override
   Widget build(BuildContext context) {
@@ -319,6 +322,8 @@ class _EventList extends StatelessWidget {
     }
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      shrinkWrap: shrinkWrapped,
+      physics: shrinkWrapped ? const NeverScrollableScrollPhysics() : null,
       itemCount: events.length,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, i) {
