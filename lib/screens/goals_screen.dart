@@ -79,11 +79,15 @@ class _GoalsScreenState extends State<GoalsScreen> {
       final index = _goals.indexWhere((g) => g.id == goalId);
       if (index == -1) return;
       final goal = _goals[index];
-      final updatedSubs = goal.subGoals
+      // 상태 업데이트
+      final updated = goal.subGoals
           .map((s) => s.id == subId ? s.copyWith(isCompleted: completed) : s)
           .toList(growable: false);
-      // 하위 목표 완료 상태는 본 목표에 영향을 주지 않음
-      _goals[index] = goal.copyWith(subGoals: updatedSubs);
+      // 정렬: 미완료 먼저, 완료는 하단으로(기존 상대적 순서 유지)
+      final incompletes = updated.where((s) => !s.isCompleted).toList(growable: false);
+      final completes = updated.where((s) => s.isCompleted).toList(growable: false);
+      final reordered = <SubGoal>[...incompletes, ...completes];
+      _goals[index] = goal.copyWith(subGoals: reordered);
     });
   }
 
