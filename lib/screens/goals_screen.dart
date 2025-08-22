@@ -483,23 +483,18 @@ class _Header extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(left: 2, right: 2, top: 8, bottom: 8),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(dateLabel, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
+          const SizedBox(height: 12),
+          Center(
             child: Text(
               message ?? '동기부여 메시지 불러오는 중... (연동 예정)',
-              style: GoogleFonts.notoSans(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w400),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.notoSans(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700, height: 1.3),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
         ],
       ),
     );
