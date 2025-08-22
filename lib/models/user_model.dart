@@ -38,4 +38,5 @@ class UserSession {
   static String? nickname;
   static String? name;
   static MotivationType? motivationType;
+  static String? prepTime; // 평균 외출 준비 시간 (예: 30분, 1시간)
 }

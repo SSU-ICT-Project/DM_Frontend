@@ -167,8 +167,9 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () {
-                // 간단 세션에 닉네임 저장
+                // 간단 세션에 닉네임/평균 준비 시간 저장
                 UserSession.nickname = _nicknameController.text.trim().isEmpty ? null : _nicknameController.text.trim();
+                UserSession.prepTime = _prepTimeController.text.trim().isEmpty ? null : _prepTimeController.text.trim();
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const MotivationTypeScreen()),
                 );

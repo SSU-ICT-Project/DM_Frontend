@@ -16,12 +16,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   final TextEditingController _nicknameController = TextEditingController(text: '사용자');
   final TextEditingController _jobController = TextEditingController(text: '직업');
   final TextEditingController _birthYearController = TextEditingController(text: '1995');
+  final TextEditingController _prepTimeController = TextEditingController();
 
   @override
   void dispose() {
     _nicknameController.dispose();
     _jobController.dispose();
     _birthYearController.dispose();
+    _prepTimeController.dispose();
     super.dispose();
   }
 
@@ -37,8 +39,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewInsets.bottom + 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -47,6 +49,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             _LabeledField(label: '직업', controller: _jobController, hint: '직업을 입력하세요'),
             const SizedBox(height: 16),
             _LabeledField(label: '생년', controller: _birthYearController, hint: 'YYYY'),
+            const SizedBox(height: 16),
+            _LabeledField(label: '평균 외출 준비 시간', controller: _prepTimeController, hint: '예: 30분, 1시간'),
             const SizedBox(height: 24),
             Text('동기부여 타입', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
             const SizedBox(height: 8),
@@ -54,7 +58,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               value: UserSession.motivationType ?? MotivationType.emotional,
               onChanged: (v) => setState(() => UserSession.motivationType = v),
             ),
-            const Spacer(),
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               height: 48,
@@ -64,6 +68,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: () {
+                  UserSession.prepTime = _prepTimeController.text.trim().isEmpty ? null : _prepTimeController.text.trim();
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('저장되었습니다.')));
                   Navigator.of(context).pop();
                 },

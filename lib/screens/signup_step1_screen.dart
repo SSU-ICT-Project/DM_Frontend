@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'signup_step2_screen.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class SignupStep1Screen extends StatefulWidget {
   const SignupStep1Screen({super.key});
@@ -16,6 +19,8 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _isObscure = true;
+  static const _usageChannel = MethodChannel('app.usage/access');
+  bool _usageGranted = false;
 
   @override
   void dispose() {
@@ -23,6 +28,26 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkUsageAccess() async {
+    try {
+      final granted = await _usageChannel.invokeMethod<bool>('isUsageAccessGranted') ?? false;
+      setState(() => _usageGranted = granted);
+      if (!granted) {
+        await _usageChannel.invokeMethod('openUsageAccessSettings');
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _requestNotificationPermissionIfNeeded() async {
+    // Android 13+ POST_NOTIFICATIONS / iOS notification permission
+    try {
+      final status = await Permission.notification.status;
+      if (!status.isGranted) {
+        await Permission.notification.request();
+      }
+    } catch (_) {}
   }
 
   void _onNext() {
@@ -158,7 +183,9 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
                     ),
                     padding: EdgeInsets.zero,
                   ),
-                  onPressed: () {
+                  onPressed: () async {
+                    await _checkUsageAccess();
+                    await _requestNotificationPermissionIfNeeded();
                     // 구글 로그인 성공 콜백에서 이 로직을 호출한다고 가정
                     Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const SignupStep2Screen()),
@@ -196,7 +223,9 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
                 ],
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+              _GoogleLoginButton(),
+              const SizedBox(height: 16),
               Text(
                 '구글 캘린더 연동을 위해 구글 간편 로그인을 추천드립니다.',
                 textAlign: TextAlign.center,
@@ -224,6 +253,32 @@ class _ThinWhiteLine extends StatelessWidget {
     return Container(
       height: 1,
       color: Colors.white,
+    );
+  }
+}
+
+class _GoogleLoginButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 280,
+      height: 40,
+      child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Colors.white24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+          foregroundColor: Colors.white,
+        ),
+        onPressed: () {
+          // TODO: 실제 구글 로그인 연동
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('구글 로그인 연동 예정')));
+        },
+        icon: const FaIcon(FontAwesomeIcons.google, size: 16, color: Colors.white),
+        label: Text(
+          'Google로 계속',
+          style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white),
+        ),
+      ),
     );
   }
 }
