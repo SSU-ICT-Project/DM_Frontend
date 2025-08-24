@@ -3,20 +3,24 @@ import 'motivation.dart';
 class SignUpData {
   String email;
   String password;
+  String passwordConfirmation;
   String name;
   String nickname;
   String phone;
   String birthday; // "YYYY-MM-DD" 형식
   String gender;   // "MALE" 또는 "FEMALE"
+  MotivationType? motivationType;
 
   SignUpData({
     this.email = '',
     this.password = '',
+    this.passwordConfirmation = '',
     this.name = '',
     this.nickname = '',
     this.phone = '',
     this.birthday = '',
     this.gender = '',
+    this.motivationType,
   });
 
   // 서버로 보낼 JSON 형식으로 변환하는 메서드
@@ -29,6 +33,7 @@ class SignUpData {
       'phone': phone,
       'birthday': birthday,
       'gender': gender,
+      'motivationType': motivationType?.toString().split('.').last.toUpperCase(),
     };
   }
 }

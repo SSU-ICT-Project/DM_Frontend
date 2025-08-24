@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/signup_step1_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/api_service.dart';
 import 'goals_screen.dart';
 import '../models/user_model.dart';
 import '../models/motivation.dart' as model;
@@ -7,7 +9,14 @@ import '../models/motivation.dart' as model;
 typedef MotivationType = model.MotivationType;
 
 class MotivationTypeScreen extends StatefulWidget {
-  const MotivationTypeScreen({super.key});
+  // ✅ final로 signUpData 필드 추가
+  final SignUpData signUpData;
+
+  // ✅ 생성자에서 signUpData를 인자로 받도록 수정
+  const MotivationTypeScreen({
+    required this.signUpData,
+    super.key,
+  });
 
   @override
   State<MotivationTypeScreen> createState() => _MotivationTypeScreenState();
@@ -15,6 +24,46 @@ class MotivationTypeScreen extends StatefulWidget {
 
 class _MotivationTypeScreenState extends State<MotivationTypeScreen> {
   MotivationType? _selectedType;
+
+  // 이 메서드를 통해 선택된 동기부여 타입을 백엔드로 전송해야 합니다.
+  Future<void> _completeSignup() async {
+    if (_selectedType == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('동기 부여 타입을 선택해 주세요.')),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('회원가입 진행 중...')),
+    );
+
+    // 전달받은 signUpData에 motivationType 정보 추가
+    widget.signUpData.motivationType = _selectedType;
+
+    // ApiService.signUp 함수 호출
+    final errorMessage = await ApiService.signUp(widget.signUpData);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar(); // 기존 스낵바 숨기기
+      if (errorMessage == null) {
+        // 회원가입 성공
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('회원가입 성공! 🎉')),
+        );
+        // 로그인 화면으로 돌아가기
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const SignupStep1Screen()),
+              (route) => false,
+        );
+      } else {
+        // 회원가입 실패
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('회원가입 실패: $errorMessage 😥')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -128,15 +177,7 @@ class _MotivationTypeScreenState extends State<MotivationTypeScreen> {
                 backgroundColor: const Color(0xFFFF504A),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              onPressed: _selectedType == null
-                  ? null
-                  : () {
-                      UserSession.motivationType = _selectedType;
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const GoalsScreen()),
-                        (route) => false,
-                      );
-                    },
+              onPressed: _selectedType == null ? null : _completeSignup,
               child: Text(
                 '가입 완료',
                 style: GoogleFonts.inter(
@@ -242,5 +283,4 @@ class _WhiteDivider extends StatelessWidget {
     return Container(height: thickness, color: Colors.white);
   }
 }
-
 
