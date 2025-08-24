@@ -7,6 +7,7 @@ import 'screens/signup_step1_screen.dart';
 import 'screens/goals_screen.dart';
 import 'services/usage_reporter.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';  // 로그인 상태를 확인하기 위해 추가합니다.
 
 // 모든 Flutter 앱의 시작점!
 void main() {
@@ -29,10 +30,63 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       // 앱이 처음 시작될 때 보여줄 화면을 지정합니다.
-      home: AppLifecycleHandler(child: const GoalsScreen()),
+      home: const InitialScreenDecider(), // InitialScreenDecider로 변경
     );
   }
 }
+
+// 앱 시작 시 로그인 상태를 확인하고 화면을 분기하는 위젯
+class InitialScreenDecider extends StatefulWidget {
+  const InitialScreenDecider({super.key});
+
+  @override
+  State<InitialScreenDecider> createState() => _InitialScreenDeciderState();
+}
+
+class _InitialScreenDeciderState extends State<InitialScreenDecider> {
+  bool _isLoggedIn = false;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  // SharedPreferences에서 로그인 토큰이 있는지 확인하는 비동기 함수
+  Future<void> _checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString('accessToken'); // 'accessToken' 키에 저장된 값 확인
+
+    setState(() {
+      _isLoggedIn = accessToken != null;
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 로딩 중일 때 로딩 인디케이터를 보여줍니다.
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFFFF504A)),
+        ),
+      );
+    }
+
+    // 로그인 상태에 따라 다른 화면을 반환합니다.
+    if (_isLoggedIn) {
+      // 로그인 되어 있으면 목표 화면으로 이동
+      return const AppLifecycleHandler(child: GoalsScreen());
+    } else {
+      // 로그인 안 되어 있으면 회원가입/로그인 화면으로 이동
+      return const AppLifecycleHandler(child: SignupStep1Screen());
+    }
+  }
+}
+
 
 class AppLifecycleHandler extends StatefulWidget {
   final Widget child;

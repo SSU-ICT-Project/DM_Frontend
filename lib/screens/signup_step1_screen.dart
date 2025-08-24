@@ -4,6 +4,10 @@ import 'signup_step2_screen.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../models/user_model.dart';
+import '../services/api_service.dart';
+import 'goals_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SignupStep1Screen extends StatefulWidget {
   const SignupStep1Screen({super.key});
@@ -41,7 +45,6 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
   }
 
   Future<void> _requestNotificationPermissionIfNeeded() async {
-    // Android 13+ POST_NOTIFICATIONS / iOS notification permission
     try {
       final status = await Permission.notification.status;
       if (!status.isGranted) {
@@ -50,13 +53,42 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
     } catch (_) {}
   }
 
-  void _onNext() {
+  // 로그인 버튼에 연결할 함수 (로그인 API 호출)
+  Future<void> _onSignIn() async {
     if (_formKey.currentState?.validate() ?? false) {
-      // TODO: 다음 단계 네비게이션 또는 상태 저장 로직 연결
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('유효성 검사가 완료되었습니다. 다음 단계로 진행합니다.')),
+        const SnackBar(content: Text('로그인 진행 중...')),
       );
+      final errorMessage = await ApiService.signIn(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      if (errorMessage == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('로그인 성공! 🎉')));
+
+        // 로그인 성공 시 홈 화면으로 이동
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const GoalsScreen()),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('로그인 실패: $errorMessage 😥')),
+        );
+      }
     }
+  }
+
+  // 회원가입 버튼에 연결할 함수 (회원가입 2단계 화면으로 이동)
+  void _onSignUp() {
+    // 회원가입 2단계 화면으로 이동
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SignupStep2Screen(),
+      ),
+    );
   }
 
   @override
@@ -86,7 +118,7 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
 
               const SizedBox(height: 40),
               Text(
-                '로그인',
+                '로그인 / 회원가입', // 텍스트 변경
                 style: GoogleFonts.inter(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -115,7 +147,7 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
                           decoration: InputDecoration(
                             isDense: true,
                             border: InputBorder.none,
-                            hintText: 'ID',
+                            hintText: '이메일(ID)', // 힌트 텍스트 변경
                             hintStyle: GoogleFonts.inter(
                               fontSize: 8,
                               fontWeight: FontWeight.w100,
@@ -141,7 +173,7 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
                           decoration: InputDecoration(
                             isDense: true,
                             border: InputBorder.none,
-                            hintText: 'Password',
+                            hintText: '비밀번호', // 힌트 텍스트 변경
                             hintStyle: GoogleFonts.inter(
                               fontSize: 8,
                               fontWeight: FontWeight.w100,
@@ -161,7 +193,7 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
                           validator: (value) {
                             final text = value?.trim() ?? '';
                             if (text.isEmpty) return '비밀번호를 입력해 주세요.';
-                            if (text.length < 8) return '비밀번호는 8자 이상이어야 합니다.';
+                            if (text.length < 4) return '비밀번호는 8자 이상이어야 합니다.';
                             return null;
                           },
                         ),
@@ -183,16 +215,33 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
                     ),
                     padding: EdgeInsets.zero,
                   ),
-                  onPressed: () async {
-                    await _checkUsageAccess();
-                    await _requestNotificationPermissionIfNeeded();
-                    // 구글 로그인 성공 콜백에서 이 로직을 호출한다고 가정
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SignupStep2Screen()),
-                    );
-                  },
+                  onPressed: _onSignIn, // 로그인 함수 호출로 변경
                   child: Text(
-                    'Sign in',
+                    '로그인', // 'Sign in' -> '로그인'으로 변경
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                      height: 1.21,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8), // 로그인과 회원가입 버튼 사이 간격 추가
+              SizedBox(
+                width: 280,
+                height: 40,
+                child: OutlinedButton( // 회원가입 버튼 추가
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.white24),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    padding: EdgeInsets.zero,
+                  ),
+                  onPressed: _onSignUp, // 회원가입 함수 호출
+                  child: Text(
+                    '회원가입',
                     style: GoogleFonts.inter(
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
@@ -282,5 +331,3 @@ class _GoogleLoginButton extends StatelessWidget {
     );
   }
 }
-
-

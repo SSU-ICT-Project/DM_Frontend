@@ -29,8 +29,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
         createdAt: DateTime.now().subtract(const Duration(days: 8)),
         deadline: DateTime.now().add(const Duration(days: 30)),
         subGoals: [
-          SubGoal(id: 's1', title: '영단어 100개 암기', createdAt: DateTime(2025, 1, 1)),
-          SubGoal(id: 's2', title: '리스닝 3회차', createdAt: DateTime(2025, 1, 2)),
+          // 하위 데이터 deadline 추가
+          SubGoal(id: 's1', title: '영단어 100개 암기', createdAt: DateTime(2025, 1, 1),deadline: DateTime.now().add(const Duration(days: 1))),
+          SubGoal(id: 's2', title: '리스닝 3회차', createdAt: DateTime(2025, 1, 2), deadline: DateTime.now().add(const Duration(days: 3))),
         ],
       ),
       Goal(
@@ -92,17 +93,24 @@ class _GoalsScreenState extends State<GoalsScreen> {
   }
 
   Future<void> _addSubGoal(String goalId) async {
-    final result = await showDialog<String>(
+    // Map<String, dynamic> 타입으로 결과 받기
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => const _AddSubGoalDialog(),
     );
-    if (result == null || result.trim().isEmpty) return;
+    if (result == null || result['title'].trim().isEmpty) return;
+
     setState(() {
       final index = _goals.indexWhere((g) => g.id == goalId);
       if (index == -1) return;
       final goal = _goals[index];
       final updatedSubs = List<SubGoal>.from(goal.subGoals)
-        ..add(SubGoal(id: UniqueKey().toString(), title: result.trim(), createdAt: DateTime.now()));
+        ..add(SubGoal(
+          id: UniqueKey().toString(),
+          title: result['title'].trim(),
+          createdAt: DateTime.now(),
+          deadline: result['deadline'], // deadline 전달
+        ));
       _goals[index] = goal.copyWith(subGoals: updatedSubs);
     });
   }
@@ -249,13 +257,6 @@ class _GoalsScreenState extends State<GoalsScreen> {
     return base;
   }
 
-  TextStyle _subGoalTextStyle(SubGoal sub) {
-    final base = GoogleFonts.notoSans(fontSize: 10, fontWeight: FontWeight.w400, color: Colors.white);
-    if (sub.isCompleted) {
-      return base.copyWith(decoration: TextDecoration.lineThrough, color: Colors.white70);
-    }
-    return base;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -411,13 +412,10 @@ class _GoalCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          sub.title,
-                          style: TextStyle(
-                            decoration: sub.isCompleted ? TextDecoration.lineThrough : null,
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w400,
-                          ),
+                          _subGoalDDayLabel(sub).isNotEmpty
+                              ? '${_subGoalDDayLabel(sub)} | ${sub.title}'
+                              : sub.title,
+                          style: _subGoalTextStyle(sub),
                         ),
                       ),
                     ],
@@ -531,6 +529,21 @@ class _AddMainGoalTile extends StatelessWidget {
     );
   }
 }
+// 하위 목표용 디데이 레이블 함수
+String _subGoalDDayLabel(SubGoal sub) {
+  final d = sub.dDay;
+  if (d == null) return '';
+  if (d == 0) return 'D-DAY';
+  return d > 0 ? 'D-$d' : 'D+${-d}';
+}
+
+TextStyle _subGoalTextStyle(SubGoal sub) {
+  final base = GoogleFonts.notoSans(fontSize: 10, fontWeight: FontWeight.w400, color: Colors.white);
+  if (sub.isCompleted) {
+    return base.copyWith(decoration: TextDecoration.lineThrough, color: Colors.white70);
+  }
+  return base;
+}
 
 class _AddSubGoalDialog extends StatefulWidget {
   const _AddSubGoalDialog({super.key}); // Added super.key
@@ -541,6 +554,7 @@ class _AddSubGoalDialog extends StatefulWidget {
 
 class _AddSubGoalDialogState extends State<_AddSubGoalDialog> {
   final TextEditingController _controller = TextEditingController();
+  DateTime? _deadline;  // 하위 목표 디데이
 
   @override
   void dispose() {
@@ -553,12 +567,45 @@ class _AddSubGoalDialogState extends State<_AddSubGoalDialog> {
     return AlertDialog(
       backgroundColor: Colors.grey[900],
       title: Text('하위 목표 추가', style: GoogleFonts.inter(color: Colors.white)),
-      content: TextField(
-        controller: _controller,
-        decoration: const InputDecoration(labelText: '하위 목표 제목', labelStyle: TextStyle(color: Colors.white70)),
-        style: const TextStyle(color: Colors.white),
-        autofocus: true,
-        onSubmitted: (v) => _submit(),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _controller,
+              decoration: const InputDecoration(labelText: '하위 목표 제목', labelStyle: TextStyle(color: Colors.white70)
+              ),
+              style: const TextStyle(color: Colors.white),
+              autofocus: true,
+              onSubmitted: (v) => _submit(),
+            ),
+            const SizedBox(height: 8),
+            // 마감일 선택 위젯 추가
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _deadline == null ? '마감일 없음' : '마감일: ${_deadline!.toLocal().toString().split(' ').first}',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final now = DateTime.now();
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _deadline ?? now,
+                      firstDate: DateTime(now.year - 1),
+                      lastDate: DateTime(now.year + 5),
+                    );
+                    if (picked != null) setState(() => _deadline = picked);
+                  },
+                  child: const Text('마감일 선택'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소', style: TextStyle(color: Colors.white70))),
@@ -570,7 +617,9 @@ class _AddSubGoalDialogState extends State<_AddSubGoalDialog> {
   void _submit() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    Navigator.pop(context, text);
+    // Navigator.pop(context, text);
+    //  결과값을 Map 형태로 반환
+    Navigator.pop(context, {'title': text, 'deadline': _deadline});
   }
 }
 
