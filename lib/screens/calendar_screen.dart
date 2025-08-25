@@ -22,6 +22,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   final Map<DateTime, List<EventItem>> _eventsByDate = {};
   bool _isLoading = true;
   Timer? _prefetchTimer;
+  final Set<String> _fetchedMonths = {};
 
   @override
   void initState() {
@@ -42,7 +43,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     final yearMonth = '${_visibleMonth.year}-${_visibleMonth.month.toString().padLeft(2, '0')}';
 
-    if (_eventsByDate.keys.any((d) => d.year == _visibleMonth.year && d.month == _visibleMonth.month)) {
+    if (_fetchedMonths.contains(yearMonth)) {
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -51,8 +52,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     try {
+      // ★★★ 해결 방법: 데이터를 불러오기 전, 해당 월의 기존 데이터를 모두 삭제 ★★★
+      _eventsByDate.removeWhere((key, value) => key.year == _visibleMonth.year && key.month == _visibleMonth.month);
+
       final events = await ApiService.getSchedulesByMonth(yearMonth);
       _updateEventsMap(events);
+      _fetchedMonths.add(yearMonth);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -83,7 +88,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final prefetchDate = DateTime(year, month);
     final yearMonth = '${prefetchDate.year}-${prefetchDate.month.toString().padLeft(2, '0')}';
 
-    if (_eventsByDate.keys.any((d) => d.year == prefetchDate.year && d.month == prefetchDate.month)) {
+    if (_fetchedMonths.contains(yearMonth)) {
       return;
     }
 
@@ -91,6 +96,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       print('Prefetching $yearMonth...');
       final events = await ApiService.getSchedulesByMonth(yearMonth);
       _updateEventsMap(events);
+      _fetchedMonths.add(yearMonth);
     } catch (e) {
       print('Prefetch failed for $yearMonth: $e');
     }
@@ -249,15 +255,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _addEventOptimistic(tempEvent);
         try {
           await ApiService.createSchedule(event);
-          await _fetchEventsForMonth();
+          final yearMonth = '${event.startAt.year}-${event.startAt.month.toString().padLeft(2, '0')}';
+          _fetchedMonths.remove(yearMonth); // 캐시 무효화
+          await _fetchEventsForMonth(); // 새로고침
         } catch (e) {
           _removeEventOptimistic(tempEvent);
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('일정 추가 실패: $e')));
         }
       } else {
+        final oldYearMonth = '${existing.startAt.year}-${existing.startAt.month.toString().padLeft(2, '0')}';
+        final newYearMonth = '${event.startAt.year}-${event.startAt.month.toString().padLeft(2, '0')}';
+        _fetchedMonths.remove(oldYearMonth);
+        _fetchedMonths.remove(newYearMonth);
+
         _updateEventOptimistic(existing, event);
         try {
           await ApiService.updateSchedule(event);
+          await _fetchEventsForMonth(); // 현재 월 새로고침
         } catch (e) {
           _updateEventOptimistic(event, existing);
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('일정 수정 실패: $e')));
@@ -511,7 +525,6 @@ class _EventList extends StatelessWidget {
   }
 }
 
-// ★★★ 최종 수정된 부분: 옵션 정보 추가 ★★★
 class _EventViewerSheet extends StatelessWidget {
   final EventItem event;
   const _EventViewerSheet({required this.event});
