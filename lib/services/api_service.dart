@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
 import '../models/harmful_apps_model.dart';
 import '../models/app_usage_model.dart';
+import '../models/self_development_time_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
@@ -303,6 +304,41 @@ class ApiService {
     });
   }
 
-// TODO: 목표 추가, 수정, 삭제 등 다른 API 메서드도 _sendRequest를 사용하도록 수정
+  // 자기개발시간을 백엔드로 전송
+  static Future<http.Response> sendSelfDevelopmentTime(SelfDevelopmentTimeModel schedule) async {
+    return _sendRequest(() async {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('accessToken');
+      final url = Uri.parse('$baseUrl/self-development-time');
+
+      return http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode(schedule.toJson()),
+      );
+    });
+  }
+
+  // 자기개발시간을 백엔드에서 가져오기
+  static Future<http.Response> getSelfDevelopmentTime() async {
+    return _sendRequest(() async {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('accessToken');
+      final url = Uri.parse('$baseUrl/self-development-time');
+
+      return http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+    });
+  }
+
+  // TODO: 목표 추가, 수정, 삭제 등 다른 API 메서드도 _sendRequest를 사용하도록 수정
 
 }
