@@ -43,6 +43,13 @@ public class MainActivity extends FlutterActivity {
                         (call, result) -> {
                             if (call.method.equals("isUsageAccessGranted")) {
                                 result.success(isUsageAccessGranted());
+                            } else if (call.method.equals("getForegroundApp")) {
+                                try {
+                                    String foregroundApp = getForegroundApp();
+                                    result.success(foregroundApp);
+                                } catch (Exception e) {
+                                    result.error("ERROR", "Failed to get foreground app: " + e.getMessage(), null);
+                                }
                             } else {
                                 result.notImplemented();
                             }

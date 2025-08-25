@@ -6,6 +6,7 @@ typedef UsageSummaryListener = void Function(Map<String, int> msByPackage);
 
 class UsageReporter {
   static const _ch = MethodChannel('app.usage/access');
+  static const _summaryCh = MethodChannel('app.usage/summary');
   Timer? _timer;
   String? _last;
   final Duration interval;
@@ -39,7 +40,6 @@ class UsageReporter {
     _timer = null;
   }
 
-  static const _summaryCh = MethodChannel('app.usage/access');
   static Future<Map<String, int>> fetchUsageSummary({
     required DateTime begin,
     required DateTime end,
@@ -50,7 +50,7 @@ class UsageReporter {
       'end': end.millisecondsSinceEpoch,
       if (packages != null) 'packages': packages.toList(),
     };
-    final map = await _summaryCh.invokeMethod<Map>('getUsageSummary', args);
+    final map = await _summaryCh.invokeMethod<Map>('fetchUsageSummary', args);
     final out = <String, int>{};
     if (map != null) {
       map.forEach((k, v) {
