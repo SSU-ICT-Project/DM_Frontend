@@ -3,6 +3,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
+import '../models/harmful_apps_model.dart';
+import '../models/app_usage_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
@@ -200,6 +202,96 @@ class ApiService {
       final prefs = await SharedPreferences.getInstance();
       final accessToken = prefs.getString('accessToken');
       final url = Uri.parse('$baseUrl/goals');
+
+      return http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+    });
+  }
+
+  // 유해앱 목록을 백엔드로 전송
+  static Future<http.Response> sendHarmfulApps(HarmfulAppsModel harmfulApps) async {
+    return _sendRequest(() async {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('accessToken');
+      final url = Uri.parse('$baseUrl/harmful-apps');
+
+      return http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode(harmfulApps.toJson()),
+      );
+    });
+  }
+
+  // 유해앱 목록을 백엔드에서 가져오기
+  static Future<http.Response> getHarmfulApps() async {
+    return _sendRequest(() async {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('accessToken');
+      final url = Uri.parse('$baseUrl/harmful-apps');
+
+      return http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+    });
+  }
+
+  // 앱 사용량을 백엔드로 전송
+  static Future<http.Response> sendAppUsage(AppUsageModel appUsage) async {
+    return _sendRequest(() async {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('accessToken');
+      final url = Uri.parse('$baseUrl/app-usage');
+
+      return http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode(appUsage.toJson()),
+      );
+    });
+  }
+
+  // 특정 날짜의 앱 사용량을 백엔드에서 가져오기
+  static Future<http.Response> getAppUsage(DateTime date) async {
+    return _sendRequest(() async {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('accessToken');
+      final dateStr = date.toIso8601String().split('T')[0]; // YYYY-MM-DD 형식
+      final url = Uri.parse('$baseUrl/app-usage?date=$dateStr');
+
+      return http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+    });
+  }
+
+  // 여러 날짜의 앱 사용량을 백엔드에서 가져오기 (기간별)
+  static Future<http.Response> getAppUsageRange(DateTime startDate, DateTime endDate) async {
+    return _sendRequest(() async {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('accessToken');
+      final startStr = startDate.toIso8601String().split('T')[0];
+      final endStr = endDate.toIso8601String().split('T')[0];
+      final url = Uri.parse('$baseUrl/app-usage/range?startDate=$startStr&endDate=$endStr');
 
       return http.get(
         url,

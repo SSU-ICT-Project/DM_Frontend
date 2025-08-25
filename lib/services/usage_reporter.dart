@@ -59,6 +59,16 @@ class UsageReporter {
     }
     return out;
   }
+
+  static Future<List<Map<String, String>>> getInstalledApps() async {
+    try {
+      final List<dynamic> result = await _summaryCh.invokeMethod('getInstalledApps');
+      return result.map((app) => Map<String, String>.from(app)).toList();
+    } catch (e) {
+      print('설치된 앱 목록 가져오기 실패: $e');
+      return [];
+    }
+  }
 }
 
 
