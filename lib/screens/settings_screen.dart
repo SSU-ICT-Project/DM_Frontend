@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'profile_settings_screen.dart';
 import 'notification_settings_screen.dart';
-import 'achievement_screen.dart';
 import 'signup_step1_screen.dart';
+import 'harmful_apps_screen.dart';
+import 'app_usage_sync_screen.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../utils/slide_page_route.dart';
 import 'calendar_screen.dart';
@@ -42,11 +43,15 @@ class SettingsScreen extends StatelessWidget {
             title: '알림 설정',
             onTap: () => Navigator.of(context).push(SlidePageRoute(page: const NotificationSettingsScreen())),
           ),
-          _Divider(),
           _SettingsTile(
-            icon: Icons.emoji_events_outlined,
-            title: '나의 목표 달성도',
-            onTap: () => Navigator.of(context).push(SlidePageRoute(page: const AchievementScreen())),
+            icon: Icons.block,
+            title: '유해앱 설정',
+            onTap: () => Navigator.of(context).push(SlidePageRoute(page: const HarmfulAppsScreen())),
+          ),
+          _SettingsTile(
+            icon: Icons.analytics,
+            title: '앱 사용량 동기화',
+            onTap: () => Navigator.of(context).push(SlidePageRoute(page: const AppUsageSyncScreen())),
           ),
           const SizedBox(height: 24),
           Padding(

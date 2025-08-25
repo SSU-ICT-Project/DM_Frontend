@@ -3,6 +3,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
+import '../models/harmful_apps_model.dart';
+import '../models/app_usage_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/event_model.dart';
 
@@ -17,9 +19,6 @@ class ApiService {
     var accessToken = prefs.getString('accessToken');
 
     if (accessToken == null) {
-      // 로그인 API 호출과 같이 토큰이 필요 없는 경우는 바로 요청
-      // 이 부분은 현재 로직상 로그인 외에는 401을 유발할 수 있으므로 로그인/회원가입 분기 처리가 필요하다면 추가 로직이 필요합니다.
-      // 현재는 토큰이 없으면 무조건 401을 반환하는 것이 안전합니다.
       return http.Response('{"message": "로그인 정보가 없습니다."}', 401);
     }
 
@@ -102,8 +101,6 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
-
-        //  서버 응답의 'data' 필드에 접근하여 실제 토큰 데이터를 가져옵니다.
         final Map<String, dynamic>? data = responseData['data'];
 
         if (data == null) return '로그인 실패: 서버로부터 토큰 데이터가 누락되었습니다.';
@@ -186,7 +183,6 @@ class ApiService {
     }
   }
 
-  // ★★★ 최종 수정된 부분 ★★★
   // 일정 생성
   static Future<void> createSchedule(EventItem event) async {
     final url = Uri.parse('$baseUrl/schedule');
@@ -196,16 +192,11 @@ class ApiService {
       body: jsonEncode(event.toJson()),
     ));
 
-    // HTTP 상태 코드가 200 (성공)이 아니면 예외를 발생시킴
     if (response.statusCode != 200) {
       print('일정 생성 실패: ${response.body}');
       throw Exception('일정 생성에 실패했습니다.');
     }
-    // 성공 시에는 아무것도 반환하지 않음.
-    // 호출한 화면(calendar_screen)에서 이 함수가 성공적으로 끝나면,
-    // 월별 데이터를 다시 불러와 화면을 갱신할 것임.
   }
-
 
   // 일정 수정
   static Future<void> updateSchedule(EventItem event) async {
@@ -232,15 +223,11 @@ class ApiService {
   }
 
   // 메인 목표 API
-  // 메인 목표 목록 조회
-  // Swagger: GET /mainGoal
   static Future<http.Response> getMainGoals({int page = 0, int size = 10}) async {
     final url = Uri.parse('$baseUrl/mainGoal?page=$page&size=$size');
     return _sendRequest((headers) => http.get(url, headers: headers));
   }
 
-  // 메인 목표 생성
-  // Swagger: POST /mainGoal
   static Future<http.Response> createMainGoal(Map<String, dynamic> goalData) async {
     final url = Uri.parse('$baseUrl/mainGoal');
     return _sendRequest((headers) => http.post(
@@ -250,8 +237,6 @@ class ApiService {
     ));
   }
 
-  // 메인 목표 수정
-  // Swagger: PUT /mainGoal/{mainGoalId}
   static Future<http.Response> updateMainGoal(String mainGoalId, Map<String, dynamic> goalData) async {
     final url = Uri.parse('$baseUrl/mainGoal/$mainGoalId');
     return _sendRequest((headers) => http.put(
@@ -261,15 +246,12 @@ class ApiService {
     ));
   }
 
-  // 메인 목표 삭제
-  // Swagger: DELETE /mainGoal/{mainGoalId}
   static Future<http.Response> deleteMainGoal(String mainGoalId) async {
     final url = Uri.parse('$baseUrl/mainGoal/$mainGoalId');
     return _sendRequest((headers) => http.delete(url, headers: headers));
   }
 
   //하위 목표 API
-  // Swagger: POST /subGoal
   static Future<http.Response> createSubGoal(Map<String, dynamic> subGoalData) async {
     final url = Uri.parse('$baseUrl/subGoal');
     return _sendRequest((headers) => http.post(
@@ -279,8 +261,6 @@ class ApiService {
     ));
   }
 
-  // 하위 목표 수정
-  // Swagger: PUT /subGoal/{subGoalId}
   static Future<http.Response> updateSubGoal(String subGoalId, Map<String, dynamic> subGoalData) async {
     final url = Uri.parse('$baseUrl/subGoal/$subGoalId');
     return _sendRequest((headers) => http.put(
@@ -290,10 +270,45 @@ class ApiService {
     ));
   }
 
-  // 하위 목표 삭제
-  // Swagger: DELETE /subGoal/{subGoalId}
   static Future<http.Response> deleteSubGoal(String subGoalId) async {
     final url = Uri.parse('$baseUrl/subGoal/$subGoalId');
     return _sendRequest((headers) => http.delete(url, headers: headers));
+  }
+
+  // 유해앱 및 앱 사용량 API
+  static Future<http.Response> sendHarmfulApps(HarmfulAppsModel harmfulApps) async {
+    final url = Uri.parse('$baseUrl/harmful-apps');
+    return _sendRequest((headers) => http.post(
+      url,
+      headers: headers,
+      body: jsonEncode(harmfulApps.toJson()),
+    ));
+  }
+
+  static Future<http.Response> getHarmfulApps() async {
+    final url = Uri.parse('$baseUrl/harmful-apps');
+    return _sendRequest((headers) => http.get(url, headers: headers));
+  }
+
+  static Future<http.Response> sendAppUsage(AppUsageModel appUsage) async {
+    final url = Uri.parse('$baseUrl/app-usage');
+    return _sendRequest((headers) => http.post(
+      url,
+      headers: headers,
+      body: jsonEncode(appUsage.toJson()),
+    ));
+  }
+
+  static Future<http.Response> getAppUsage(DateTime date) async {
+    final dateStr = date.toIso8601String().split('T')[0];
+    final url = Uri.parse('$baseUrl/app-usage?date=$dateStr');
+    return _sendRequest((headers) => http.get(url, headers: headers));
+  }
+
+  static Future<http.Response> getAppUsageRange(DateTime startDate, DateTime endDate) async {
+    final startStr = startDate.toIso8601String().split('T')[0];
+    final endStr = endDate.toIso8601String().split('T')[0];
+    final url = Uri.parse('$baseUrl/app-usage/range?startDate=$startStr&endDate=$endStr');
+    return _sendRequest((headers) => http.get(url, headers: headers));
   }
 }

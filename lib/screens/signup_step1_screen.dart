@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'signup_step2_screen.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/user_model.dart';
@@ -322,7 +321,7 @@ class _GoogleLoginButton extends StatelessWidget {
           // TODO: 실제 구글 로그인 연동
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('구글 로그인 연동 예정')));
         },
-        icon: const FaIcon(FontAwesomeIcons.google, size: 16, color: Colors.white),
+        icon: const Icon(Icons.account_circle, size: 16, color: Colors.white),
         label: Text(
           'Google로 계속',
           style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white),
