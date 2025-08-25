@@ -5,6 +5,7 @@ import 'notification_settings_screen.dart';
 import 'signup_step1_screen.dart';
 import 'harmful_apps_screen.dart';
 import 'app_usage_sync_screen.dart';
+import 'self_development_time_screen.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../utils/slide_page_route.dart';
 import 'calendar_screen.dart';
@@ -52,6 +53,11 @@ class SettingsScreen extends StatelessWidget {
             icon: Icons.analytics,
             title: '앱 사용량 동기화',
             onTap: () => Navigator.of(context).push(SlidePageRoute(page: const AppUsageSyncScreen())),
+          ),
+          _SettingsTile(
+            icon: Icons.schedule,
+            title: '자기개발시간 설정',
+            onTap: () => Navigator.of(context).push(SlidePageRoute(page: const SelfDevelopmentTimeScreen())),
           ),
           const SizedBox(height: 24),
           Padding(

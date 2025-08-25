@@ -6,6 +6,7 @@ import '../models/user_model.dart';
 import '../models/harmful_apps_model.dart';
 import '../models/app_usage_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/self_development_time_model.dart';
 import '../models/event_model.dart';
 
 class ApiService {
@@ -309,6 +310,21 @@ class ApiService {
     final startStr = startDate.toIso8601String().split('T')[0];
     final endStr = endDate.toIso8601String().split('T')[0];
     final url = Uri.parse('$baseUrl/app-usage/range?startDate=$startStr&endDate=$endStr');
+    return _sendRequest((headers) => http.get(url, headers: headers));
+  }
+
+  // 자기개발시간 API
+  static Future<http.Response> sendSelfDevelopmentTime(SelfDevelopmentTimeModel schedule) async {
+    final url = Uri.parse('$baseUrl/self-development-time');
+    return _sendRequest((headers) => http.post(
+      url,
+      headers: headers,
+      body: jsonEncode(schedule.toJson()),
+    ));
+  }
+
+  static Future<http.Response> getSelfDevelopmentTime() async {
+    final url = Uri.parse('$baseUrl/self-development-time');
     return _sendRequest((headers) => http.get(url, headers: headers));
   }
 }
