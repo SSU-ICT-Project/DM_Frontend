@@ -101,7 +101,7 @@ class ApiService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
 
-        // ✅ 서버 응답의 'data' 필드에 접근하여 실제 토큰 데이터를 가져옵니다.
+        //  서버 응답의 'data' 필드에 접근하여 실제 토큰 데이터를 가져옵니다.
         final Map<String, dynamic>? data = responseData['data'];
 
         if (data == null) {
@@ -212,5 +212,128 @@ class ApiService {
   }
 
 // TODO: 목표 추가, 수정, 삭제 등 다른 API 메서드도 _sendRequest를 사용하도록 수정
+
+  // 메인 목표 API
+  // 메인 목표 목록 조회
+  // Swagger: GET /mainGoal
+  static Future<http.Response> getMainGoals({int page = 0, int size = 10}) async {
+    return _sendRequest(() async {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('accessToken');
+      final url = Uri.parse('$baseUrl/mainGoal?page=$page&size=$size'); // 쿼리 파라미터 추가
+
+      return http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+    });
+  }
+
+  // 메인 목표 생성
+  // Swagger: POST /mainGoal
+  static Future<http.Response> createMainGoal(Map<String, dynamic> goalData) async {
+    return _sendRequest(() async {
+      final url = Uri.parse('$baseUrl/mainGoal');
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('accessToken');
+      return http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode(goalData),
+      );
+    });
+  }
+
+  // 메인 목표 수정
+  // Swagger: PUT /mainGoal/{mainGoalId}
+  static Future<http.Response> updateMainGoal(String mainGoalId, Map<String, dynamic> goalData) async {
+    return _sendRequest(() async {
+      final url = Uri.parse('$baseUrl/mainGoal/$mainGoalId');
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('accessToken');
+      return http.put(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode(goalData),
+      );
+    });
+  }
+
+  // 메인 목표 삭제
+  // Swagger: DELETE /mainGoal/{mainGoalId}
+  static Future<http.Response> deleteMainGoal(String mainGoalId) async {
+    return _sendRequest(() async {
+      final url = Uri.parse('$baseUrl/mainGoal/$mainGoalId');
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('accessToken');
+      return http.delete(
+        url,
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+    });
+  }
+
+  //하위 목표 API
+  // Swagger: POST /subGoal
+  static Future<http.Response> createSubGoal(Map<String, dynamic> subGoalData) async {
+    return _sendRequest(() async {
+      final url = Uri.parse('$baseUrl/subGoal');
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('accessToken');
+      return http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode(subGoalData),
+      );
+    });
+  }
+
+  // 하위 목표 수정
+  // Swagger: PUT /subGoal/{subGoalId}
+  static Future<http.Response> updateSubGoal(String subGoalId, Map<String, dynamic> subGoalData) async {
+    return _sendRequest(() async {
+      final url = Uri.parse('$baseUrl/subGoal/$subGoalId');
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('accessToken');
+      return http.put(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode(subGoalData),
+      );
+    });
+  }
+
+  // 하위 목표 삭제
+  // Swagger: DELETE /subGoal/{subGoalId}
+  static Future<http.Response> deleteSubGoal(String subGoalId) async {
+    return _sendRequest(() async {
+      final url = Uri.parse('$baseUrl/subGoal/$subGoalId');
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('accessToken');
+      return http.delete(
+        url,
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+    });
+  }
 
 }
