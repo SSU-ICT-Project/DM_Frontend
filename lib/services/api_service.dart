@@ -102,6 +102,8 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+        //  서버 응답의 'data' 필드에 접근하여 실제 토큰 데이터를 가져옵니다.
         final Map<String, dynamic>? data = responseData['data'];
 
         if (data == null) return '로그인 실패: 서버로부터 토큰 데이터가 누락되었습니다.';
@@ -227,5 +229,71 @@ class ApiService {
     if (response.statusCode != 200) {
       throw Exception('일정 삭제에 실패했습니다.');
     }
+  }
+
+  // 메인 목표 API
+  // 메인 목표 목록 조회
+  // Swagger: GET /mainGoal
+  static Future<http.Response> getMainGoals({int page = 0, int size = 10}) async {
+    final url = Uri.parse('$baseUrl/mainGoal?page=$page&size=$size');
+    return _sendRequest((headers) => http.get(url, headers: headers));
+  }
+
+  // 메인 목표 생성
+  // Swagger: POST /mainGoal
+  static Future<http.Response> createMainGoal(Map<String, dynamic> goalData) async {
+    final url = Uri.parse('$baseUrl/mainGoal');
+    return _sendRequest((headers) => http.post(
+      url,
+      headers: headers,
+      body: jsonEncode(goalData),
+    ));
+  }
+
+  // 메인 목표 수정
+  // Swagger: PUT /mainGoal/{mainGoalId}
+  static Future<http.Response> updateMainGoal(String mainGoalId, Map<String, dynamic> goalData) async {
+    final url = Uri.parse('$baseUrl/mainGoal/$mainGoalId');
+    return _sendRequest((headers) => http.put(
+      url,
+      headers: headers,
+      body: jsonEncode(goalData),
+    ));
+  }
+
+  // 메인 목표 삭제
+  // Swagger: DELETE /mainGoal/{mainGoalId}
+  static Future<http.Response> deleteMainGoal(String mainGoalId) async {
+    final url = Uri.parse('$baseUrl/mainGoal/$mainGoalId');
+    return _sendRequest((headers) => http.delete(url, headers: headers));
+  }
+
+  //하위 목표 API
+  // Swagger: POST /subGoal
+  static Future<http.Response> createSubGoal(Map<String, dynamic> subGoalData) async {
+    final url = Uri.parse('$baseUrl/subGoal');
+    return _sendRequest((headers) => http.post(
+      url,
+      headers: headers,
+      body: jsonEncode(subGoalData),
+    ));
+  }
+
+  // 하위 목표 수정
+  // Swagger: PUT /subGoal/{subGoalId}
+  static Future<http.Response> updateSubGoal(String subGoalId, Map<String, dynamic> subGoalData) async {
+    final url = Uri.parse('$baseUrl/subGoal/$subGoalId');
+    return _sendRequest((headers) => http.put(
+      url,
+      headers: headers,
+      body: jsonEncode(subGoalData),
+    ));
+  }
+
+  // 하위 목표 삭제
+  // Swagger: DELETE /subGoal/{subGoalId}
+  static Future<http.Response> deleteSubGoal(String subGoalId) async {
+    final url = Uri.parse('$baseUrl/subGoal/$subGoalId');
+    return _sendRequest((headers) => http.delete(url, headers: headers));
   }
 }
