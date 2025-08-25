@@ -1,9 +1,11 @@
+// lib/screens/profile_settings_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/app_bottom_nav.dart';
-import '../utils/slide_page_route.dart';
 import '../models/user_model.dart';
 import '../models/motivation.dart';
+import '../services/api_service.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});
@@ -13,17 +15,66 @@ class ProfileSettingsScreen extends StatefulWidget {
 }
 
 class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
-  final TextEditingController _nicknameController = TextEditingController(text: '사용자');
-  final TextEditingController _jobController = TextEditingController(text: '직업');
-  final TextEditingController _birthYearController = TextEditingController(text: '1995');
-  final TextEditingController _prepTimeController = TextEditingController();
+  final TextEditingController _nicknameController = TextEditingController();
+  final TextEditingController _jobController = TextEditingController();
+  final TextEditingController _birthYearController = TextEditingController();
+  final TextEditingController _prepTimeController = TextEditingController(); // <-- 컨트롤러 추가
+
+  MotivationType _motivationType = MotivationType.emotional;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    setState(() => _isLoading = true);
+    final userInfo = await ApiService.getMemberInfo();
+    if (userInfo != null && mounted) {
+      setState(() {
+        _nicknameController.text = userInfo.nickname;
+        _jobController.text = userInfo.job;
+        if (userInfo.birthday != null) {
+          _birthYearController.text = userInfo.birthday!.split('-').first;
+        }
+        _prepTimeController.text = userInfo.prepTime ?? ''; // <-- 데이터 로드
+        _motivationType = userInfo.motivationType;
+        _isLoading = false;
+      });
+    } else if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _saveUserData() async {
+    final updatedInfo = MemberForm(
+      nickname: _nicknameController.text.trim(),
+      job: _jobController.text.trim(),
+      birthday: '${_birthYearController.text.trim()}-01-01',
+      motivationType: _motivationType,
+      prepTime: _prepTimeController.text.trim(), // <-- 데이터 저장
+    );
+
+    final success = await ApiService.updateMember(updatedInfo);
+
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('저장되었습니다.')));
+        Navigator.of(context).pop();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('저장에 실패했습니다.')));
+      }
+    }
+  }
 
   @override
   void dispose() {
     _nicknameController.dispose();
     _jobController.dispose();
     _birthYearController.dispose();
-    _prepTimeController.dispose();
+    _prepTimeController.dispose(); // <-- dispose 추가
     super.dispose();
   }
 
@@ -39,7 +90,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewInsets.bottom + 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -50,13 +103,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             const SizedBox(height: 16),
             _LabeledField(label: '생년', controller: _birthYearController, hint: 'YYYY'),
             const SizedBox(height: 16),
+            // <-- UI에 필드 추가
             _LabeledField(label: '평균 외출 준비 시간', controller: _prepTimeController, hint: '예: 30분, 1시간'),
             const SizedBox(height: 24),
             Text('동기부여 타입', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
             const SizedBox(height: 8),
             _MotivationTypeChooser(
-              value: UserSession.motivationType ?? MotivationType.emotional,
-              onChanged: (v) => setState(() => UserSession.motivationType = v),
+              value: _motivationType,
+              onChanged: (v) => setState(() => _motivationType = v),
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -67,11 +121,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   backgroundColor: const Color(0xFFFF504A),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () {
-                  UserSession.prepTime = _prepTimeController.text.trim().isEmpty ? null : _prepTimeController.text.trim();
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('저장되었습니다.')));
-                  Navigator.of(context).pop();
-                },
+                onPressed: _saveUserData,
                 child: Text('저장', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ),
@@ -83,6 +133,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 }
 
+// ... (_LabeledField, _SettingsBottomNav, _MotivationTypeChooser 위젯은 변경 없음)
 class _LabeledField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
@@ -159,5 +210,3 @@ class _MotivationTypeChooser extends StatelessWidget {
     );
   }
 }
-
-

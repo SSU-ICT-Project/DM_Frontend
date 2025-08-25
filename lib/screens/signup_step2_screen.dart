@@ -51,7 +51,7 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
         nickname: _nicknameController.text.trim(),
-        name: _jobController.text.trim(),
+        job: _jobController.text.trim(),
         birthday: _selectedBirthday!.toIso8601String().split('T').first,
         gender: _selectedGender!,
         phone: '010-0000-0000', // Still a temporary value

@@ -211,6 +211,76 @@ class ApiService {
     });
   }
 
-// TODO: 목표 추가, 수정, 삭제 등 다른 API 메서드도 _sendRequest를 사용하도록 수정
+  // 사용자 정보 가져오기
+  static Future<DetailMemberDto?> getMemberInfo() async {
+    final response = await _sendRequest(() async {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('accessToken');
+      final url = Uri.parse('$baseUrl/member/detail');
+      return http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+    });
 
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> responseData = jsonDecode(utf8.decode(response.bodyBytes));
+      return DetailMemberDto.fromJson(responseData['data']);
+    } else {
+      print('사용자 정보 가져오기 실패: ${response.statusCode}, ${response.body}');
+      return null;
+    }
+  }
+
+  // 사용자 정보 수정
+  static Future<bool> updateMember(MemberForm form) async {
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString('accessToken');
+
+    if (accessToken == null) {
+      print("Error: Access Token is null. User might be logged out.");
+      return false;
+    }
+
+    final url = Uri.parse('$baseUrl/member');
+    var request = http.MultipartRequest('PUT', url);
+    request.headers['Authorization'] = 'Bearer $accessToken';
+
+    final jsonPayload = jsonEncode(form.toJson());
+    request.fields['memberForm'] = jsonPayload;
+
+    // --- 백엔드 개발자에게 보여줄 로그 추가 ---
+    print("----------- Member Update Request -----------");
+    print("URL: ${request.method} ${request.url}");
+    print("Headers: ${request.headers}");
+    print("Fields: ${request.fields}");
+    // print("Files: ${request.files.map((f) => f.filename).toList()}"); // 이미지 파일이 있다면 이 로그도 추가
+    print("-------------------------------------------");
+
+    try {
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      // --- 백엔드 개발자에게 보여줄 로그 추가 ---
+      print("----------- Member Update Response ----------");
+      print("Status Code: ${response.statusCode}");
+      print("Headers: ${response.headers}");
+      print("Body: ${utf8.decode(response.bodyBytes)}"); // 한글 깨짐 방지를 위해 utf8 디코딩
+      print("-------------------------------------------");
+
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print('사용자 정보 업데이트 실패: ${response.statusCode}, ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print("사용자 정보 업데이트 중 예외 발생: $e");
+      return false;
+    }
+  }
 }

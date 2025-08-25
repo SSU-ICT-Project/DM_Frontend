@@ -1,10 +1,12 @@
+// lib/models/user_model.dart
+
 import 'motivation.dart';
 
 class SignUpData {
   String email;
   String password;
   String passwordConfirmation;
-  String name;
+  String job; // 'name' 필드를 'job'으로 변경
   String nickname;
   String phone;
   String birthday; // "YYYY-MM-DD" 형식
@@ -15,7 +17,7 @@ class SignUpData {
     this.email = '',
     this.password = '',
     this.passwordConfirmation = '',
-    this.name = '',
+    this.job = '', // 'name' 필드를 'job'으로 변경
     this.nickname = '',
     this.phone = '',
     this.birthday = '',
@@ -28,7 +30,7 @@ class SignUpData {
     return {
       'email': email,
       'password': password,
-      'name': name,
+      'job': job, // 'name' 키를 'job'으로 변경
       'nickname': nickname,
       'phone': phone,
       'birthday': birthday,
@@ -44,4 +46,57 @@ class UserSession {
   static String? name;
   static MotivationType? motivationType;
   static String? prepTime; // 평균 외출 준비 시간 (예: 30분, 1시간)
+}
+
+class DetailMemberDto {
+  final String nickname;
+  final String job;
+  final String? birthday;
+  final MotivationType motivationType;
+  final String? prepTime;
+
+  DetailMemberDto({
+    required this.nickname,
+    required this.job,
+    this.birthday,
+    required this.motivationType,
+    this.prepTime,
+  });
+
+  factory DetailMemberDto.fromJson(Map<String, dynamic> json) {
+    return DetailMemberDto(
+      // ✅ null 값일 경우 빈 문자열 ''을 기본값으로 사용하도록 수정
+      nickname: json['nickname'] ?? '',
+      job: json['job'] ?? '',
+      birthday: json['birthday'],
+      motivationType: motivationTypeFromString(json['motivationType']),
+      prepTime: json['prepTime'],
+    );
+  }
+}
+
+class MemberForm {
+  final String nickname;
+  final String job;
+  final String? birthday;
+  final MotivationType motivationType;
+  final String? prepTime;
+
+  MemberForm({
+    required this.nickname,
+    required this.job,
+    this.birthday,
+    required this.motivationType,
+    this.prepTime,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'nickname': nickname,
+      'job': job,
+      'birthday': birthday,
+      'motivationType': motivationType.toString().split('.').last.toUpperCase(),
+      'prepTime': prepTime,
+    };
+  }
 }

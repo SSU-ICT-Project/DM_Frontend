@@ -1,3 +1,5 @@
+// lib/models/motivation.dart
+
 enum MotivationType {
   emotional, // 감성 자극형
   futureVision, // 미래/비전 제시형
@@ -18,5 +20,17 @@ String motivationTypeLabel(MotivationType type) {
   }
 }
 
-
-
+MotivationType motivationTypeFromString(String? type) {
+  switch (type) {
+    case 'EMOTIONAL':
+      return MotivationType.emotional;
+    case 'VISION':
+      return MotivationType.futureVision;
+    case 'ACTION':
+      return MotivationType.action;
+    case 'COMPETITION':
+      return MotivationType.competition;
+    default:
+      return MotivationType.emotional;
+  }
+}
