@@ -52,11 +52,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     try {
-      // ★★★ 해결 방법: 데이터를 불러오기 전, 해당 월의 기존 데이터를 모두 삭제 ★★★
-      _eventsByDate.removeWhere((key, value) => key.year == _visibleMonth.year && key.month == _visibleMonth.month);
-
       final events = await ApiService.getSchedulesByMonth(yearMonth);
-      _updateEventsMap(events);
+      _updateEventsMap(_visibleMonth, events);
       _fetchedMonths.add(yearMonth);
     } catch (e) {
       if (mounted) {
@@ -95,14 +92,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
     try {
       print('Prefetching $yearMonth...');
       final events = await ApiService.getSchedulesByMonth(yearMonth);
-      _updateEventsMap(events);
+      _updateEventsMap(prefetchDate, events);
       _fetchedMonths.add(yearMonth);
     } catch (e) {
       print('Prefetch failed for $yearMonth: $e');
     }
   }
 
-  void _updateEventsMap(List<EventItem> events) {
+  void _updateEventsMap(DateTime month, List<EventItem> events) {
+    _eventsByDate.removeWhere((key, value) => key.year == month.year && key.month == month.month);
+
     for (var event in events) {
       final key = DateTime(event.startAt.year, event.startAt.month, event.startAt.day);
       _eventsByDate.putIfAbsent(key, () => []).add(event);
@@ -256,8 +255,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         try {
           await ApiService.createSchedule(event);
           final yearMonth = '${event.startAt.year}-${event.startAt.month.toString().padLeft(2, '0')}';
-          _fetchedMonths.remove(yearMonth); // 캐시 무효화
-          await _fetchEventsForMonth(); // 새로고침
+          _fetchedMonths.remove(yearMonth);
+          await _fetchEventsForMonth();
         } catch (e) {
           _removeEventOptimistic(tempEvent);
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('일정 추가 실패: $e')));
@@ -271,7 +270,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _updateEventOptimistic(existing, event);
         try {
           await ApiService.updateSchedule(event);
-          await _fetchEventsForMonth(); // 현재 월 새로고침
+          await _fetchEventsForMonth();
         } catch (e) {
           _updateEventOptimistic(event, existing);
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('일정 수정 실패: $e')));
