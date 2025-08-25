@@ -1,7 +1,11 @@
+// lib/screens/calendar_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
 import '../widgets/app_bottom_nav.dart';
 import '../models/event_model.dart';
+import '../services/api_service.dart';
 import 'goals_screen.dart';
 import 'settings_screen.dart';
 
@@ -16,41 +20,127 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _visibleMonth = DateTime(DateTime.now().year, DateTime.now().month);
   DateTime? _selectedDate;
   final Map<DateTime, List<EventItem>> _eventsByDate = {};
+  bool _isLoading = true;
+  Timer? _prefetchTimer;
 
   @override
   void initState() {
     super.initState();
-    // 데모 이벤트
-    _addDemoEvents();
+    _fetchEventsForMonth(showLoading: true);
   }
 
-  void _addDemoEvents() {
-    final now = DateTime.now();
-    final d1 = DateTime(now.year, now.month, now.day, 9);
-    final d2 = DateTime(now.year, now.month, now.day + 2, 14);
-    final d3 = DateTime(now.year, now.month, now.day + 2, 19);
-    _addEvent(EventItem(id: 'e1', title: '팀 스탠드업', location: '온라인', startAt: d1, endAt: d1.add(const Duration(hours: 1))));
-    _addEvent(EventItem(id: 'e2', title: '헬스', location: 'XX 피트니스', startAt: d2, endAt: d2.add(const Duration(hours: 1))));
-    _addEvent(EventItem(id: 'e3', title: '저녁 약속', location: '강남역', startAt: d3, endAt: d3.add(const Duration(hours: 2))));
+  @override
+  void dispose() {
+    _prefetchTimer?.cancel();
+    super.dispose();
   }
 
-  void _addEvent(EventItem e) {
-    final key = DateTime(e.startAt.year, e.startAt.month, e.startAt.day);
-    _eventsByDate.putIfAbsent(key, () => []);
-    _eventsByDate[key]!.add(e);
+  Future<void> _fetchEventsForMonth({bool showLoading = false}) async {
+    if (showLoading) {
+      setState(() => _isLoading = true);
+    }
+
+    final yearMonth = '${_visibleMonth.year}-${_visibleMonth.month.toString().padLeft(2, '0')}';
+
+    if (_eventsByDate.keys.any((d) => d.year == _visibleMonth.year && d.month == _visibleMonth.month)) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      _triggerPrefetch();
+      return;
+    }
+
+    try {
+      final events = await ApiService.getSchedulesByMonth(yearMonth);
+      _updateEventsMap(events);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('일정을 불러오는 데 실패했습니다: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          if (showLoading) {
+            _isLoading = false;
+          }
+        });
+      }
+      _triggerPrefetch();
+    }
+  }
+
+  void _triggerPrefetch() {
+    _prefetchTimer?.cancel();
+    _prefetchTimer = Timer(const Duration(milliseconds: 500), () {
+      _prefetchMonth(_visibleMonth.month - 1, _visibleMonth.year);
+      _prefetchMonth(_visibleMonth.month + 1, _visibleMonth.year);
+    });
+  }
+
+  Future<void> _prefetchMonth(int month, int year) async {
+    final prefetchDate = DateTime(year, month);
+    final yearMonth = '${prefetchDate.year}-${prefetchDate.month.toString().padLeft(2, '0')}';
+
+    if (_eventsByDate.keys.any((d) => d.year == prefetchDate.year && d.month == prefetchDate.month)) {
+      return;
+    }
+
+    try {
+      print('Prefetching $yearMonth...');
+      final events = await ApiService.getSchedulesByMonth(yearMonth);
+      _updateEventsMap(events);
+    } catch (e) {
+      print('Prefetch failed for $yearMonth: $e');
+    }
+  }
+
+  void _updateEventsMap(List<EventItem> events) {
+    for (var event in events) {
+      final key = DateTime(event.startAt.year, event.startAt.month, event.startAt.day);
+      _eventsByDate.putIfAbsent(key, () => []).add(event);
+    }
   }
 
   List<EventItem> _eventsOf(DateTime day) {
     final key = DateTime(day.year, day.month, day.day);
-    final list = _eventsByDate[key] ?? const [];
-    final sorted = [...list]..sort((a, b) => a.startAt.compareTo(b.startAt));
-    return sorted;
+    final events = List<EventItem>.from(_eventsByDate[key] ?? []);
+    events.sort((a, b) => a.startAt.compareTo(b.startAt));
+    return events;
   }
 
   void _changeMonth(int diff) {
     setState(() {
       _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + diff);
       _selectedDate = null;
+    });
+    _fetchEventsForMonth(showLoading: true);
+  }
+
+  void _addEventOptimistic(EventItem event) {
+    final key = DateTime(event.startAt.year, event.startAt.month, event.startAt.day);
+    setState(() {
+      _eventsByDate.putIfAbsent(key, () => []).add(event);
+    });
+  }
+
+  void _removeEventOptimistic(EventItem event) {
+    final key = DateTime(event.startAt.year, event.startAt.month, event.startAt.day);
+    setState(() {
+      _eventsByDate[key]?.removeWhere((e) => e.id == event.id);
+    });
+  }
+
+  void _updateEventOptimistic(EventItem oldEvent, EventItem newEvent) {
+    final oldKey = DateTime(oldEvent.startAt.year, oldEvent.startAt.month, oldEvent.startAt.day);
+    setState(() {
+      _eventsByDate[oldKey]?.removeWhere((e) => e.id == oldEvent.id);
+    });
+
+    final newKey = DateTime(newEvent.startAt.year, newEvent.startAt.month, newEvent.startAt.day);
+    setState(() {
+      _eventsByDate.putIfAbsent(newKey, () => []).add(newEvent);
     });
   }
 
@@ -71,7 +161,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF504A)))
+          : SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 16),
         child: Column(
           children: [
@@ -99,6 +191,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _EventList(
               date: _selectedDate,
               events: selectedEvents,
+              onTap: (e) => _openEventViewer(context, event: e),
               onEdit: (e) => _openEventEditor(context, existing: e),
               shrinkWrapped: true,
             ),
@@ -110,22 +203,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
         onTap: (i) {
           if (i == 1) {
             Navigator.of(context).pushAndRemoveUntil(
-              PageRouteBuilder(
-                pageBuilder: (_, __, ___) => const GoalsScreen(),
-                transitionDuration: Duration.zero,
-                reverseTransitionDuration: Duration.zero,
-              ),
-              (route) => false,
+              PageRouteBuilder(pageBuilder: (_, __, ___) => const GoalsScreen(), transitionDuration: Duration.zero, reverseTransitionDuration: Duration.zero),
+                  (route) => false,
             );
           }
           if (i == 2) {
             Navigator.of(context).pushAndRemoveUntil(
-              PageRouteBuilder(
-                pageBuilder: (_, __, ___) => const SettingsScreen(),
-                transitionDuration: Duration.zero,
-                reverseTransitionDuration: Duration.zero,
-              ),
-              (route) => false,
+              PageRouteBuilder(pageBuilder: (_, __, ___) => const SettingsScreen(), transitionDuration: Duration.zero, reverseTransitionDuration: Duration.zero),
+                  (route) => false,
             );
           }
         },
@@ -133,28 +218,60 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  Future<void> _openEventViewer(BuildContext context, {required EventItem event}) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _EventViewerSheet(event: event),
+    );
+  }
+
   Future<void> _openEventEditor(BuildContext context, {EventItem? existing}) async {
-    final updated = await showModalBottomSheet<EventItem?> (
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _EventEditorSheet(
         initial: existing,
-        onDelete: existing == null ? null : () {
-          final key = DateTime(existing.startAt.year, existing.startAt.month, existing.startAt.day);
-          setState(() { _eventsByDate[key]?.removeWhere((x) => x.id == existing.id); });
-          Navigator.of(ctx).pop(null);
-        },
+        selectedDate: _selectedDate ?? DateTime.now(),
       ),
     );
-    if (updated == null) return;
-    setState(() {
-      if (existing != null) {
-        final oldKey = DateTime(existing.startAt.year, existing.startAt.month, existing.startAt.day);
-        _eventsByDate[oldKey]?.removeWhere((x) => x.id == existing.id);
+
+    if (result == null || !mounted) return;
+
+    final action = result['action'];
+    final event = result['event'] as EventItem?;
+
+    if (action == 'save' && event != null) {
+      if (existing == null) {
+        final tempEvent = event.copyWith(id: 'temp_${DateTime.now().millisecondsSinceEpoch}');
+        _addEventOptimistic(tempEvent);
+        try {
+          await ApiService.createSchedule(event);
+          await _fetchEventsForMonth();
+        } catch (e) {
+          _removeEventOptimistic(tempEvent);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('일정 추가 실패: $e')));
+        }
+      } else {
+        _updateEventOptimistic(existing, event);
+        try {
+          await ApiService.updateSchedule(event);
+        } catch (e) {
+          _updateEventOptimistic(event, existing);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('일정 수정 실패: $e')));
+        }
       }
-      _addEvent(updated);
-    });
+    } else if (action == 'delete' && existing != null) {
+      _removeEventOptimistic(existing);
+      try {
+        await ApiService.deleteSchedule(existing.id);
+      } catch (e) {
+        _addEventOptimistic(existing);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('일정 삭제 실패: $e')));
+      }
+    }
   }
 }
 
@@ -170,7 +287,9 @@ class _NavButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(border: Border.all(color: Colors.white24), borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(
+            border: Border.all(color: Colors.white24),
+            borderRadius: BorderRadius.circular(8)),
         child: Icon(icon, color: Colors.white),
       ),
     );
@@ -190,7 +309,9 @@ class _WeekdayHeader extends StatelessWidget {
           for (var i = 0; i < 7; i++)
             Expanded(
               child: Center(
-                child: Text(labels[i], style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+                child: Text(labels[i],
+                    style:
+                    GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
               ),
             ),
         ],
@@ -215,7 +336,7 @@ class _MonthGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final firstDayOfMonth = DateTime(visibleMonth.year, visibleMonth.month, 1);
-    final firstWeekday = firstDayOfMonth.weekday % 7; // Sun=0 .. Sat=6
+    final firstWeekday = firstDayOfMonth.weekday % 7;
     final daysInMonth = DateTime(visibleMonth.year, visibleMonth.month + 1, 0).day;
     final totalCells = ((firstWeekday + daysInMonth + 6) ~/ 7) * 7;
 
@@ -248,7 +369,7 @@ class _MonthGrid extends StatelessWidget {
 
 class _DayCell extends StatelessWidget {
   final int index;
-  final int firstWeekday; // 0..6 Sun..Sat
+  final int firstWeekday;
   final int daysInMonth;
   final DateTime visibleMonth;
   final DateTime? selectedDate;
@@ -307,18 +428,29 @@ class _DayCell extends StatelessWidget {
 class _EventList extends StatelessWidget {
   final DateTime? date;
   final List<EventItem> events;
+  final void Function(EventItem e) onTap;
   final void Function(EventItem e) onEdit;
   final bool shrinkWrapped;
 
-  const _EventList({required this.date, required this.events, required this.onEdit, this.shrinkWrapped = false});
+  const _EventList({
+    required this.date,
+    required this.events,
+    required this.onTap,
+    required this.onEdit,
+    this.shrinkWrapped = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     if (date == null) {
-      return Center(child: Text('날짜를 선택해 주세요', style: GoogleFonts.inter(color: Colors.white54)));
+      return Center(
+          child: Text('날짜를 선택해 주세요',
+              style: GoogleFonts.inter(color: Colors.white54)));
     }
     if (events.isEmpty) {
-      return Center(child: Text('일정이 없습니다', style: GoogleFonts.inter(color: Colors.white54)));
+      return Center(
+          child: Text('일정이 없습니다',
+              style: GoogleFonts.inter(color: Colors.white54)));
     }
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -328,31 +460,44 @@ class _EventList extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, i) {
         final e = events[i];
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(12)),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.access_time, color: Colors.white70, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(_timeRangeLabel(e), style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
-                    const SizedBox(height: 2),
-                    Text(e.title, style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                    if (e.location != null && e.location!.isNotEmpty)
-                      Text(e.location!, style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
-                  ],
+        return InkWell(
+          onTap: () => onTap(e),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+                color: Colors.white10, borderRadius: BorderRadius.circular(12)),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.access_time, color: Colors.white70, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_timeRangeLabel(e),
+                          style: GoogleFonts.inter(
+                              color: Colors.white70, fontSize: 12)),
+                      const SizedBox(height: 2),
+                      Text(e.title,
+                          style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600)),
+                      if (e.location != null && e.location!.isNotEmpty)
+                        Text(e.location!,
+                            style: GoogleFonts.inter(
+                                color: Colors.white70, fontSize: 12)),
+                    ],
+                  ),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.edit, color: Colors.white70),
-                onPressed: () => onEdit(e),
-              ),
-            ],
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.white70, size: 20),
+                  onPressed: () => onEdit(e),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -360,16 +505,110 @@ class _EventList extends StatelessWidget {
   }
 
   String _timeRangeLabel(EventItem e) {
-    String hhmm(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    String hhmm(DateTime d) =>
+        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
     return '${hhmm(e.startAt)} - ${hhmm(e.endAt)}';
+  }
+}
+
+// ★★★ 최종 수정된 부분: 옵션 정보 추가 ★★★
+class _EventViewerSheet extends StatelessWidget {
+  final EventItem event;
+  const _EventViewerSheet({required this.event});
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.4,
+      maxChildSize: 0.8,
+      builder: (context, controller) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          child: ListView(
+            controller: controller,
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+            children: [
+              Center(
+                child: Container(
+                    width: 48,
+                    height: 4,
+                    decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2))),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                  event.title,
+                  style: GoogleFonts.inter(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)
+              ),
+              const SizedBox(height: 24),
+              _InfoRow(icon: Icons.access_time_rounded, text: _formatDateTimeRange(event.startAt, event.endAt)),
+              if (event.location != null && event.location!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _InfoRow(icon: Icons.location_on_outlined, text: event.location!),
+              ],
+              if (event.memo != null && event.memo!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _InfoRow(icon: Icons.notes_rounded, text: event.memo!),
+              ],
+              const Divider(color: Colors.white24, height: 48),
+              _InfoRow(icon: Icons.flag_outlined, text: '디데이', trailing: Text(event.useDDay ? 'On' : 'Off', style: GoogleFonts.inter(color: Colors.white))),
+              const SizedBox(height: 16),
+              _InfoRow(icon: Icons.notifications_active_outlined, text: '자동 시간 계산 알림', trailing: Text(event.useAutoTimeNotification ? 'On' : 'Off', style: GoogleFonts.inter(color: Colors.white))),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatDateTimeRange(DateTime start, DateTime end) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    String datePart(DateTime d) => '${d.year}.${two(d.month)}.${two(d.day)}';
+    String timePart(DateTime d) => '${two(d.hour)}:${two(d.minute)}';
+
+    if (start.year == end.year && start.month == end.month && start.day == end.day) {
+      return '${datePart(start)}\n${timePart(start)} - ${timePart(end)}';
+    } else {
+      return '${datePart(start)} ${timePart(start)}\n-\n${datePart(end)} ${timePart(end)}';
+    }
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final Widget? trailing;
+  const _InfoRow({required this.icon, required this.text, this.trailing});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: Colors.white70, size: 20),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+              text,
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 14, height: 1.5)
+          ),
+        ),
+        if (trailing != null) trailing!,
+      ],
+    );
   }
 }
 
 class _EventEditorSheet extends StatefulWidget {
   final EventItem? initial;
-  final VoidCallback? onDelete;
+  final DateTime selectedDate;
 
-  const _EventEditorSheet({this.initial, this.onDelete});
+  const _EventEditorSheet({this.initial, required this.selectedDate});
 
   @override
   State<_EventEditorSheet> createState() => _EventEditorSheetState();
@@ -387,12 +626,16 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
     final init = widget.initial;
+    final now = DateTime.now();
+    final initialDateTime = init?.startAt ??
+        DateTime(widget.selectedDate.year, widget.selectedDate.month,
+            widget.selectedDate.day, now.hour, 0);
+
     _title = TextEditingController(text: init?.title ?? '');
     _location = TextEditingController(text: init?.location ?? '');
     _memo = TextEditingController(text: init?.memo ?? '');
-    _startAt = init?.startAt ?? DateTime(now.year, now.month, now.day, now.hour, 0);
+    _startAt = initialDateTime;
     _endAt = init?.endAt ?? _startAt.add(const Duration(hours: 1));
     _useDDay = init?.useDDay ?? false;
     _useAutoTime = init?.useAutoTimeNotification ?? false;
@@ -420,13 +663,22 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
           ),
           child: ListView(
             controller: controller,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).viewInsets.bottom + 24),
             children: [
               Center(
-                child: Container(width: 48, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+                child: Container(
+                    width: 48,
+                    height: 4,
+                    decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2))),
               ),
               const SizedBox(height: 12),
-              Text(widget.initial == null ? '일정' : '일정', style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+              Text(widget.initial == null ? '일정' : '일정',
+                  style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
               _DarkInput(controller: _title, hint: '제목'),
               const SizedBox(height: 12),
@@ -453,15 +705,21 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
                 ),
               ),
               const SizedBox(height: 12),
-              _DateTimePicker(label: '시작', value: _startAt, onChanged: (v) => setState(() => _startAt = v)),
+              _DateTimePicker(
+                  label: '시작',
+                  value: _startAt,
+                  onChanged: (v) => setState(() => _startAt = v)),
               const SizedBox(height: 12),
-              _DateTimePicker(label: '종료', value: _endAt, onChanged: (v) => setState(() => _endAt = v)),
+              _DateTimePicker(
+                  label: '종료',
+                  value: _endAt,
+                  onChanged: (v) => setState(() => _endAt = v)),
               const SizedBox(height: 12),
               _DarkInput(controller: _memo, hint: '메모', maxLines: 6),
               const SizedBox(height: 20),
               if (widget.initial != null)
                 TextButton(
-                  onPressed: widget.onDelete,
+                  onPressed: _delete,
                   style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
                   child: const Text('일정 삭제'),
                 ),
@@ -469,7 +727,10 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
               SizedBox(
                 height: 48,
                 child: FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF504A), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF504A),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
                   onPressed: _save,
                   child: const Text('저장'),
                 ),
@@ -487,8 +748,13 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
       builder: (context) => AlertDialog(
         backgroundColor: Colors.grey[900],
         title: const Text('자동 시간 계산 알림', style: TextStyle(color: Colors.white)),
-        content: const Text('이 기능을 켜면 위치/일정에 따라 소요 시간을 예측해 시작 전 알림을 드립니다.', style: TextStyle(color: Colors.white70)),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('확인'))],
+        content: const Text(
+            '이 기능을 켜면 위치/일정에 따라 소요 시간을 예측해 시작 전 알림을 드립니다.',
+            style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context), child: const Text('확인'))
+        ],
       ),
     );
   }
@@ -503,10 +769,16 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
     if (picked != null) setState(() => _location.text = picked);
   }
 
-  Future<void> _save() async {
-    final id = widget.initial?.id ?? UniqueKey().toString();
+  void _save() {
+    if (_title.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('제목을 입력해주세요.')),
+      );
+      return;
+    }
+
     final event = EventItem(
-      id: id,
+      id: widget.initial?.id ?? 'new',
       title: _title.text.trim(),
       location: _location.text.trim().isEmpty ? null : _location.text.trim(),
       startAt: _startAt,
@@ -515,28 +787,11 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
       useDDay: _useDDay,
       useAutoTimeNotification: _useAutoTime,
     );
-    Navigator.of(context).pop(event);
+    Navigator.of(context).pop({'action': 'save', 'event': event});
   }
-}
 
-class _GrayField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final int maxLines;
-  const _GrayField({required this.controller, required this.hint, this.maxLines = 1});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(color: const Color(0xFFD9D9D9), borderRadius: BorderRadius.circular(12)),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: TextField(
-        controller: controller,
-        maxLines: maxLines,
-        decoration: InputDecoration.collapsed(hintText: hint, hintStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w300, color: const Color(0xFF717171))),
-        style: GoogleFonts.inter(fontSize: 14, color: Colors.black),
-      ),
-    );
+  void _delete() {
+    Navigator.of(context).pop({'action': 'delete', 'event': widget.initial});
   }
 }
 
@@ -557,7 +812,9 @@ class _DarkInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(color: const Color(0xFF2B2B2B), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+          color: const Color(0xFF2B2B2B),
+          borderRadius: BorderRadius.circular(12)),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       height: maxLines == 1 ? 56 : null,
       child: Align(
@@ -571,7 +828,10 @@ class _DarkInput extends StatelessWidget {
           textAlignVertical: maxLines == 1 ? TextAlignVertical.center : null,
           decoration: InputDecoration.collapsed(
             hintText: hint,
-            hintStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w400, color: const Color(0xFF9E9E9E)),
+            hintStyle: GoogleFonts.inter(
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+                color: const Color(0xFF9E9E9E)),
           ),
           style: GoogleFonts.inter(fontSize: 17, color: Colors.white),
         ),
@@ -585,18 +845,29 @@ class _SwitchRow extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
   final Widget? trailing;
-  const _SwitchRow({required this.label, required this.value, required this.onChanged, this.trailing});
+  const _SwitchRow(
+      {required this.label,
+        required this.value,
+        required this.onChanged,
+        this.trailing});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(color: const Color(0xFF2B2B2B), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+          color: const Color(0xFF2B2B2B),
+          borderRadius: BorderRadius.circular(12)),
       child: Row(
         children: [
           const SizedBox(width: 8),
-          Expanded(child: Text(label, style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600))),
+          Expanded(
+              child: Text(label,
+                  style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600))),
           if (trailing != null) trailing!,
           Switch(
             value: value,
@@ -610,59 +881,12 @@ class _SwitchRow extends StatelessWidget {
   }
 }
 
-class _LocationField extends StatelessWidget {
-  final TextEditingController controller;
-  final VoidCallback onPick;
-  const _LocationField({required this.controller, required this.onPick});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: _GrayField(controller: controller, hint: '위치 검색')),
-        const SizedBox(width: 8),
-        SizedBox(
-          height: 44,
-          child: FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF504A), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            onPressed: onPick,
-            child: const Text('검색'),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ToggleChip extends StatelessWidget {
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-  const _ToggleChip({required this.label, required this.value, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        alignment: Alignment.center,
-        height: 44,
-        decoration: BoxDecoration(
-          color: value ? const Color(0xFFFF504A) : Colors.white10,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(label, style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
-      ),
-    );
-  }
-}
-
 class _DateTimePicker extends StatelessWidget {
   final String label;
   final DateTime value;
   final ValueChanged<DateTime> onChanged;
-  const _DateTimePicker({required this.label, required this.value, required this.onChanged});
+  const _DateTimePicker(
+      {required this.label, required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -671,26 +895,33 @@ class _DateTimePicker extends StatelessWidget {
         final date = await showDatePicker(
           context: context,
           initialDate: value,
-          firstDate: DateTime(value.year - 1),
+          firstDate: DateTime(value.year - 5),
           lastDate: DateTime(value.year + 5),
         );
         if (date == null) return;
-        final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(value));
+        if (!context.mounted) return;
+        final time = await showTimePicker(
+            context: context, initialTime: TimeOfDay.fromDateTime(value));
         if (time == null) return;
-        onChanged(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+        onChanged(
+            DateTime(date.year, date.month, date.day, time.hour, time.minute));
       },
       child: Container(
         height: 48,
-        decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(
+            color: Colors.white10, borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(horizontal: 12),
         alignment: Alignment.centerLeft,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(label, style: GoogleFonts.inter(color: Colors.white70, fontSize: 11)),
+            Text(label,
+                style: GoogleFonts.inter(color: Colors.white70, fontSize: 11)),
             const SizedBox(height: 2),
-            Text(_fmt(value), style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
+            Text(_fmt(value),
+                style: GoogleFonts.inter(
+                    color: Colors.white, fontWeight: FontWeight.w600)),
           ],
         ),
       ),
@@ -727,18 +958,29 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (context, controller) => Container(
-        decoration: const BoxDecoration(color: Colors.black, borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+        decoration: const BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
         child: Column(
           children: [
             const SizedBox(height: 8),
-            Container(width: 48, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            Container(
+                width: 48,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('위치', style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+                  Text('위치',
+                      style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -747,7 +989,10 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                       SizedBox(
                         height: 44,
                         child: FilledButton(
-                          style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF504A), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                          style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF504A),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12))),
                           onPressed: _search,
                           child: const Text('검색'),
                         ),
@@ -765,7 +1010,8 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                 itemBuilder: (context, i) {
                   final item = _results[i];
                   return ListTile(
-                    title: Text(item, style: GoogleFonts.inter(color: Colors.white)),
+                    title:
+                    Text(item, style: GoogleFonts.inter(color: Colors.white)),
                     onTap: () => Navigator.of(context).pop(item),
                   );
                 },
@@ -787,5 +1033,3 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
     });
   }
 }
-
-
