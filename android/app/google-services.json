@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "910298565199",
+    "project_id": "dm-project-8b943",
+    "storage_bucket": "dm-project-8b943.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:910298565199:android:930f8991d21dface9d383a",
+        "android_client_info": {
+          "package_name": "com.dm.dm_bakend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLAU0APHrbkb5dtmsZwBgq7XQXnqz9zv4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
