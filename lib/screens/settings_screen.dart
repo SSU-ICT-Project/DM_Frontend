@@ -10,6 +10,7 @@ import '../widgets/app_bottom_nav.dart';
 import '../utils/slide_page_route.dart';
 import 'calendar_screen.dart';
 import 'goals_screen.dart';
+import 'notification_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -39,6 +40,11 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => Navigator.of(context).push(SlidePageRoute(page: const ProfileSettingsScreen())),
           ),
           _Divider(),
+          _SettingsTile(
+            icon: Icons.notifications_active_outlined,
+            title: '알림 목록',
+            onTap: () => Navigator.of(context).push(SlidePageRoute(page: const NotificationScreen())),
+          ),
           _SettingsTile(
             icon: Icons.notifications_outlined,
             title: '알림 설정',
