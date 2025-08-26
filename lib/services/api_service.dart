@@ -80,6 +80,11 @@ class ApiService {
       }
 
       print('토큰 갱신 실패: ${response.statusCode}, ${response.body}');
+      final fcmToken = prefs.getString('fcm_token');
+      if (fcmToken != null) {
+        await ApiService.deleteFCMToken(fcmToken);
+        await prefs.remove('fcm_token');
+      }
       await prefs.remove('accessToken');
       await prefs.remove('refreshToken');
       return null;
@@ -153,6 +158,13 @@ class ApiService {
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     final accessToken = prefs.getString('accessToken');
+    final fcmToken = prefs.getString('fcm_token'); // FCM 토큰 가져오기
+
+    if (fcmToken != null) {
+      await ApiService.deleteFCMToken(fcmToken); // 백엔드에서 FCM 토큰 삭제
+      await prefs.remove('fcm_token'); // 로컬에서 FCM 토큰 삭제
+    }
+
     if (accessToken == null) return;
 
     final url = Uri.parse('$baseUrl/auth/logout');
@@ -326,5 +338,45 @@ class ApiService {
   static Future<http.Response> getSelfDevelopmentTime() async {
     final url = Uri.parse('$baseUrl/self-development-time');
     return _sendRequest((headers) => http.get(url, headers: headers));
+  }
+
+  // FCM Token 저장 API
+  static Future<void> saveFCMToken(String token) async {
+    final url = Uri.parse('$baseUrl/fcm');
+    try {
+      final response = await _sendRequest((headers) => http.post(
+        url,
+        headers: headers,
+        body: jsonEncode({'fcmToken': token}), // 백엔드에서 'fcmToken' 필드를 기대할 것으로 예상
+      ));
+
+      if (response.statusCode == 200) {
+        print('FCM Token successfully saved to backend.');
+      } else {
+        print('Failed to save FCM Token: ${response.statusCode}, ${response.body}');
+      }
+    } catch (e) {
+      print('Error saving FCM Token: $e');
+    }
+  }
+
+  // FCM Token 삭제 API
+  static Future<void> deleteFCMToken(String token) async {
+    final url = Uri.parse('$baseUrl/fcm');
+    try {
+      final response = await _sendRequest((headers) => http.delete(
+        url,
+        headers: headers,
+        body: jsonEncode({'fcmToken': token}), // 삭제 시에도 토큰을 본문에 포함하여 전송
+      ));
+
+      if (response.statusCode == 200) {
+        print('FCM Token successfully deleted from backend.');
+      } else {
+        print('Failed to delete FCM Token: ${response.statusCode}, ${response.body}');
+      }
+    } catch (e) {
+      print('Error deleting FCM Token: $e');
+    }
   }
 }

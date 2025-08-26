@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'signup_step2_screen.dart';
@@ -7,12 +8,24 @@ import '../models/user_model.dart';
 import '../services/api_service.dart';
 import 'goals_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class SignupStep1Screen extends StatefulWidget {
   const SignupStep1Screen({super.key});
 
   @override
   State<SignupStep1Screen> createState() => _SignupStep1ScreenState();
+}
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // If you're going to use other Firebase services in your background callbacks,
+  // such as Firestore, make sure you call `initializeApp` before using them.
+  await Firebase.initializeApp();
+  print("Handling a background message: ${message.messageId}");
+  if (message.notification != null) {
+    print('Background message contained a notification: ${message.notification?.title} / ${message.notification?.body}');
+  }
 }
 
 class _SignupStep1ScreenState extends State<SignupStep1Screen> {
@@ -43,13 +56,63 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
     } catch (_) {}
   }
 
-  Future<void> _requestNotificationPermissionIfNeeded() async {
-    try {
-      final status = await Permission.notification.status;
-      if (!status.isGranted) {
-        await Permission.notification.request();
+  Future<void> _initFCM() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+    final prefs = await SharedPreferences.getInstance();
+
+    // Request permission for notifications
+    NotificationSettings settings = await messaging.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
+
+    print('User granted permission: ${settings.authorizationStatus}');
+
+    if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+        settings.authorizationStatus == AuthorizationStatus.provisional) {
+      // Get FCM token
+      String? currentToken = await messaging.getToken();
+      print("FCM Current Token: $currentToken");
+
+      String? savedToken = prefs.getString('fcm_token');
+
+      if (currentToken != null && currentToken != savedToken) {
+        // Save token to backend via API service
+        await ApiService.saveFCMToken(currentToken);
+        await prefs.setString('fcm_token', currentToken);
+        print('FCM Token sent to backend and saved locally.');
+      } else if (currentToken != null && savedToken == currentToken) {
+        print('FCM Token is already up-to-date.');
       }
-    } catch (_) {}
+
+      // Listen for token refreshes
+      messaging.onTokenRefresh.listen((newToken) async {
+        print("FCM Token Refreshed: $newToken");
+        await ApiService.saveFCMToken(newToken);
+        await prefs.setString('fcm_token', newToken);
+        print('Refreshed FCM Token sent to backend and saved locally.');
+      });
+    } else {
+      print('User declined or has not accepted notification permission.');
+    }
+
+    // Handle foreground messages
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('Got a message whilst in the foreground!');
+      print('Message data: ${message.data}');
+
+      if (message.notification != null) {
+        print('Message also contained a notification: ${message.notification?.title} / ${message.notification?.body}');
+      }
+    });
+
+    // Handle background messages
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   }
 
   // 로그인 버튼에 연결할 함수 (로그인 API 호출)
@@ -66,6 +129,9 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
       if (errorMessage == null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('로그인 성공! 🎉')));
+
+        // FCM 토큰 발급 및 저장 로직 호출
+        await _initFCM();
 
         // 로그인 성공 시 홈 화면으로 이동
         Navigator.of(context).pushReplacement(
