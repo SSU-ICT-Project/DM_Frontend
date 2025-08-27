@@ -13,7 +13,8 @@ class SignupStep2Screen extends StatefulWidget {
   State<SignupStep2Screen> createState() => _SignupStep2ScreenState();
 }
 
-class _SignupStep2ScreenState extends State<SignupStep2Screen> {
+class _SignupStep2ScreenState extends State<SignupStep2Screen>
+    with TickerProviderStateMixin {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
@@ -28,6 +29,61 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen> {
   // New state variables for gender and birthday
   String? _selectedGender;
   DateTime? _selectedBirthday;
+
+  // 애니메이션 컨트롤러들
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _initAnimations();
+  }
+
+  void _initAnimations() {
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.2),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _fadeController.forward();
+    _slideController.forward();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _nicknameController.dispose();
+    _jobController.dispose();
+    _prepTimeController.dispose();
+    _fadeController.dispose();
+    _slideController.dispose();
+    super.dispose();
+  }
 
   Future<void> _callSignUpApi() async {
     // The previous logic to directly call the signup API is now split.
@@ -67,20 +123,9 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen> {
   }
 
   @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    _nicknameController.dispose();
-    _jobController.dispose();
-    _prepTimeController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -89,104 +134,162 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: 1, top: 12, bottom: 24),
-                  child: Text(
-                    'Digital Minimalism',
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFFFF504A),
-                      height: 1.21,
+                // 헤더 섹션
+                FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Color(0xFFFF504A), Color(0xFFFF6B6B)],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.person_add,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Digital Minimalism',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: const Color(0xFFFF504A),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        '회원가입 정보',
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '디지털 미니멀리즘을 위한 첫 걸음을 시작해보세요',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.white60,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // 폼 섹션
+                SlideTransition(
+                  position: _slideAnimation,
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Column(
+                      children: [
+                        // 기존 입력 필드들
+                        _ModernInputField(
+                          label: '이메일',
+                          hintText: 'example@email.com',
+                          controller: _emailController,
+                          prefixIcon: Icons.email_outlined,
+                          validator: (value) => (value == null || !value.contains('@')) ? '유효한 이메일을 입력해 주세요.' : null,
+                        ),
+                        const SizedBox(height: 20),
+                        _ModernInputField(
+                          label: '비밀번호',
+                          hintText: '8자 이상 입력해 주세요',
+                          controller: _passwordController,
+                          prefixIcon: Icons.lock_outlined,
+                          isObscure: _isPasswordObscure,
+                          onObscureToggle: () => setState(() => _isPasswordObscure = !_isPasswordObscure),
+                          validator: (value) {
+                            final text = value?.trim() ?? '';
+                            if (text.isEmpty) return '비밀번호를 입력해 주세요.';
+                            if (text.length < 8) return '비밀번호는 8자 이상이어야 합니다.';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        _ModernInputField(
+                          label: '비밀번호 확인',
+                          hintText: '비밀번호를 다시 한 번 입력해 주세요',
+                          controller: _confirmPasswordController,
+                          prefixIcon: Icons.lock_outlined,
+                          isObscure: _isConfirmPasswordObscure,
+                          onObscureToggle: () => setState(() => _isConfirmPasswordObscure = !_isConfirmPasswordObscure),
+                          validator: (value) => (value != _passwordController.text.trim()) ? '비밀번호가 일치하지 않습니다.' : null,
+                        ),
+                        const SizedBox(height: 20),
+                        _ModernInputField(
+                          label: '닉네임',
+                          hintText: '사용자님을 어떻게 부를까요?',
+                          controller: _nicknameController,
+                          prefixIcon: Icons.person_outline,
+                          validator: (value) => (value == null || value.trim().isEmpty) ? '닉네임을 입력해 주세요.' : null,
+                        ),
+                        const SizedBox(height: 20),
+                        _ModernInputField(
+                          label: '직업',
+                          hintText: 'AI가 당신의 직업을 고려해 동기부여 해줍니다!',
+                          controller: _jobController,
+                          prefixIcon: Icons.work_outline,
+                          validator: (value) => (value == null || value.trim().isEmpty) ? '직업을 입력해 주세요.' : null,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // 성별 선택
+                        Text(
+                          '성별',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _ModernGenderSelection(
+                          selectedGender: _selectedGender,
+                          onChanged: (gender) => setState(() => _selectedGender = gender),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // 생년월일 선택
+                        Text(
+                          '생년월일',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _ModernBirthdayPicker(
+                          selectedBirthday: _selectedBirthday,
+                          onChanged: (date) => setState(() => _selectedBirthday = date),
+                        ),
+                        const SizedBox(height: 20),
+
+                        _ModernInputField(
+                          label: '평균 외출 준비 시간',
+                          hintText: '예: 30분, 1시간 (선택 사항)',
+                          controller: _prepTimeController,
+                          prefixIcon: Icons.access_time,
+                          validator: null,
+                        ),
+                        const SizedBox(height: 32),
+                      ],
                     ),
                   ),
                 ),
-                Text(
-                  '회원가입 정보',
-                  style: GoogleFonts.inter(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    height: 1.21,
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Existing input fields
-                _GrayLabeledInput(
-                  label: '이메일',
-                  hintText: '이메일(ID)를 입력해 주세요.',
-                  controller: _emailController,
-                  validator: (value) => (value == null || !value.contains('@')) ? '유효한 이메일을 입력해 주세요.' : null,
-                ),
-                const SizedBox(height: 20),
-                _GrayLabeledInput(
-                  label: '비밀번호',
-                  hintText: '비밀번호를 입력해 주세요.',
-                  controller: _passwordController,
-                  isObscure: _isPasswordObscure,
-                  onObscureToggle: () => setState(() => _isPasswordObscure = !_isPasswordObscure),
-                  validator: (value) {
-                    final text = value?.trim() ?? '';
-                    if (text.isEmpty) return '비밀번호를 입력해 주세요.';
-                    if (text.length < 8) return '비밀번호는 8자 이상이어야 합니다.';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-                _GrayLabeledInput(
-                  label: '비밀번호 확인',
-                  hintText: '비밀번호를 다시 한 번 입력해 주세요.',
-                  controller: _confirmPasswordController,
-                  isObscure: _isConfirmPasswordObscure,
-                  onObscureToggle: () => setState(() => _isConfirmPasswordObscure = !_isConfirmPasswordObscure),
-                  validator: (value) => (value != _passwordController.text.trim()) ? '비밀번호가 일치하지 않습니다.' : null,
-                ),
-                const SizedBox(height: 20),
-                _GrayLabeledInput(
-                  label: '닉네임',
-                  hintText: '사용자님을 어떻게 부를까요?',
-                  controller: _nicknameController,
-                  validator: (value) => (value == null || value.trim().isEmpty) ? '닉네임을 입력해 주세요.' : null,
-                ),
-                const SizedBox(height: 20),
-                _GrayLabeledInput(
-                  label: '직업',
-                  hintText: 'AI가 당신의 직업을 고려해 동기부여 해줍니다!',
-                  controller: _jobController,
-                  validator: (value) => (value == null || value.trim().isEmpty) ? '직업을 입력해 주세요.' : null,
-                ),
-                const SizedBox(height: 20),
-
-                // New fields for Gender and Birthday
-                Text(
-                  '성별',
-                  style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white, height: 1.21),
-                ),
-                const SizedBox(height: 6),
-                _GenderSelectionWidget(
-                  selectedGender: _selectedGender,
-                  onChanged: (gender) => setState(() => _selectedGender = gender),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  '생년월일',
-                  style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white, height: 1.21),
-                ),
-                const SizedBox(height: 6),
-                _BirthdayPicker(
-                  selectedBirthday: _selectedBirthday,
-                  onChanged: (date) => setState(() => _selectedBirthday = date),
-                ),
-                const SizedBox(height: 20),
-
-                _GrayLabeledInput(
-                  label: '평균 외출 준비 시간',
-                  hintText: '예: 30분, 1시간 (선택 사항)',
-                  controller: _prepTimeController,
-                  validator: null,
-                ),
-                const SizedBox(height: 32),
               ],
             ),
           ),
@@ -196,22 +299,40 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen> {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
           child: SizedBox(
-            height: 46,
+            height: 56,
             width: double.infinity,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFF504A),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               onPressed: _callSignUpApi,
-              child: Text(
-                '다음', // Text changed to "Next"
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                  height: 1.21,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    '다음',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.arrow_forward,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -221,9 +342,8 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen> {
   }
 }
 
-// Reusable widgets
-class _GrayLabeledInput extends StatelessWidget {
-  // ... (original code)
+// 현대적인 입력 필드 위젯
+class _ModernInputField extends StatelessWidget {
   final String label;
   final String hintText;
   final TextEditingController controller;
@@ -231,16 +351,17 @@ class _GrayLabeledInput extends StatelessWidget {
   final TextInputType? keyboardType;
   final bool isObscure;
   final VoidCallback? onObscureToggle;
+  final IconData prefixIcon;
 
-  const _GrayLabeledInput({
+  const _ModernInputField({
     required this.label,
     required this.hintText,
     required this.controller,
+    required this.prefixIcon,
     this.validator,
     this.keyboardType,
     this.isObscure = false,
     this.onObscureToggle,
-    super.key,
   });
 
   @override
@@ -250,49 +371,39 @@ class _GrayLabeledInput extends StatelessWidget {
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
             color: Colors.white,
-            height: 1.21,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Container(
-          height: 48,
           decoration: BoxDecoration(
-            color: const Color(0xFFD9D9D9),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
           child: TextFormField(
             controller: controller,
             keyboardType: keyboardType,
             obscureText: isObscure,
             validator: validator,
             decoration: InputDecoration(
-              border: InputBorder.none,
-              hintText: hintText,
-              hintStyle: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w300,
-                color: const Color(0xFF717171),
-                height: 1.21,
-              ),
+              prefixIcon: Icon(prefixIcon, color: Colors.white60),
               suffixIcon: onObscureToggle != null
                   ? IconButton(
-                icon: Icon(
-                  isObscure ? Icons.visibility : Icons.visibility_off,
-                  color: const Color(0xFF717171),
-                ),
-                onPressed: onObscureToggle,
-              )
+                      icon: Icon(
+                        isObscure ? Icons.visibility : Icons.visibility_off,
+                        color: Colors.white60,
+                      ),
+                      onPressed: onObscureToggle,
+                    )
                   : null,
-            ),
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: Colors.black,
             ),
           ),
         ),
@@ -301,12 +412,12 @@ class _GrayLabeledInput extends StatelessWidget {
   }
 }
 
-// New widgets for Gender and Birthday
-class _GenderSelectionWidget extends StatelessWidget {
+// 현대적인 성별 선택 위젯
+class _ModernGenderSelection extends StatelessWidget {
   final String? selectedGender;
   final ValueChanged<String> onChanged;
 
-  const _GenderSelectionWidget({
+  const _ModernGenderSelection({
     required this.selectedGender,
     required this.onChanged,
   });
@@ -315,31 +426,35 @@ class _GenderSelectionWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _GenderButton(
-          label: '남성',
-          gender: 'MALE',
-          isSelected: selectedGender == 'MALE',
-          onTap: onChanged,
+        Expanded(
+          child: _ModernGenderButton(
+            label: '남성',
+            gender: 'MALE',
+            isSelected: selectedGender == 'MALE',
+            onTap: onChanged,
+          ),
         ),
-        const SizedBox(width: 12),
-        _GenderButton(
-          label: '여성',
-          gender: 'FEMALE',
-          isSelected: selectedGender == 'FEMALE',
-          onTap: onChanged,
+        const SizedBox(width: 16),
+        Expanded(
+          child: _ModernGenderButton(
+            label: '여성',
+            gender: 'FEMALE',
+            isSelected: selectedGender == 'FEMALE',
+            onTap: onChanged,
+          ),
         ),
       ],
     );
   }
 }
 
-class _GenderButton extends StatelessWidget {
+class _ModernGenderButton extends StatelessWidget {
   final String label;
   final String gender;
   final bool isSelected;
   final ValueChanged<String> onTap;
 
-  const _GenderButton({
+  const _ModernGenderButton({
     required this.label,
     required this.gender,
     required this.isSelected,
@@ -348,23 +463,28 @@ class _GenderButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: isSelected ? const Color(0xFFFF504A) : Colors.white,
-          backgroundColor: isSelected ? Colors.white.withOpacity(0.1) : Colors.transparent,
-          side: BorderSide(
-            color: isSelected ? const Color(0xFFFF504A) : Colors.white,
-            width: isSelected ? 2 : 1,
+    return GestureDetector(
+      onTap: () => onTap(gender),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? const Color(0xFFFF504A).withOpacity(0.1)
+              : Colors.transparent,
+          border: Border.all(
+            color: isSelected 
+                ? const Color(0xFFFF504A)
+                : Colors.white24,
+            width: isSelected ? 2 : 1.5,
           ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          borderRadius: BorderRadius.circular(16),
         ),
-        onPressed: () => onTap(gender),
         child: Text(
           label,
-          style: GoogleFonts.inter(
-            fontSize: 16,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: isSelected ? const Color(0xFFFF504A) : Colors.white,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -373,11 +493,12 @@ class _GenderButton extends StatelessWidget {
   }
 }
 
-class _BirthdayPicker extends StatelessWidget {
+// 현대적인 생년월일 선택 위젯
+class _ModernBirthdayPicker extends StatelessWidget {
   final DateTime? selectedBirthday;
   final ValueChanged<DateTime> onChanged;
 
-  const _BirthdayPicker({
+  const _ModernBirthdayPicker({
     required this.selectedBirthday,
     required this.onChanged,
   });
@@ -398,10 +519,10 @@ class _BirthdayPicker extends StatelessWidget {
                 colorScheme: const ColorScheme.dark(
                   primary: Color(0xFFFF504A),
                   onPrimary: Colors.white,
-                  surface: Colors.grey,
+                  surface: Color(0xFF1A1A1A),
                   onSurface: Colors.white,
                 ),
-                dialogBackgroundColor: Colors.black,
+                dialogBackgroundColor: const Color(0xFF0A0A0A),
               ),
               child: child!,
             );
@@ -412,19 +533,38 @@ class _BirthdayPicker extends StatelessWidget {
         }
       },
       child: Container(
-        height: 48,
+        height: 56,
         decoration: BoxDecoration(
-          color: const Color(0xFFD9D9D9),
-          borderRadius: BorderRadius.circular(12),
+          color: const Color(0xFF1A1A1A),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white24, width: 1.5),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        alignment: Alignment.centerLeft,
-        child: Text(
-          selectedBirthday != null ? selectedBirthday!.toIso8601String().split('T').first : '생년월일을 선택해 주세요.',
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            color: selectedBirthday != null ? Colors.black : const Color(0xFF717171),
-          ),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            Icon(
+              Icons.calendar_today,
+              color: selectedBirthday != null 
+                  ? const Color(0xFFFF504A)
+                  : Colors.white60,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              selectedBirthday != null 
+                  ? selectedBirthday!.toIso8601String().split('T').first
+                  : '생년월일을 선택해 주세요',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: selectedBirthday != null ? Colors.white : Colors.white60,
+              ),
+            ),
+            const Spacer(),
+            Icon(
+              Icons.keyboard_arrow_down,
+              color: Colors.white60,
+              size: 20,
+            ),
+          ],
         ),
       ),
     );
