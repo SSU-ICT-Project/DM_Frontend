@@ -5,13 +5,12 @@ import 'package:flutter/foundation.dart';
 class EventItem {
   final String id;
   final String title;
-  final String? location;
   final DateTime startAt;
   final DateTime endAt;
   final String? memo;
   final bool useDDay;
   final bool useAutoTimeNotification;
-  // 위치 정보 확장
+  // 위치 정보 (placename으로 통합)
   final double? latitude;
   final double? longitude;
   final String? placeName;
@@ -22,7 +21,6 @@ class EventItem {
     required this.title,
     required this.startAt,
     required this.endAt,
-    this.location,
     this.memo,
     this.useDDay = false,
     this.useAutoTimeNotification = false,
@@ -35,7 +33,6 @@ class EventItem {
   EventItem copyWith({
     String? id,
     String? title,
-    String? location,
     DateTime? startAt,
     DateTime? endAt,
     String? memo,
@@ -49,7 +46,6 @@ class EventItem {
     return EventItem(
       id: id ?? this.id,
       title: title ?? this.title,
-      location: location ?? this.location,
       startAt: startAt ?? this.startAt,
       endAt: endAt ?? this.endAt,
       memo: memo ?? this.memo,
@@ -69,13 +65,12 @@ class EventItem {
       title: json['scheduleName'],
       startAt: DateTime.parse(json['scheduleStartTime']),
       endAt: DateTime.parse(json['scheduleEndTime']),
-      location: json['location'],
       memo: json['memo'],
       useDDay: json['d_Day'] ?? false,
       useAutoTimeNotification: json['autoTimeCheck'] ?? false,
       latitude: json['latitude']?.toDouble(),
       longitude: json['longitude']?.toDouble(),
-      placeName: json['placeName'],
+      placeName: json['placeName'] ?? json['location'], // 기존 location을 placeName으로 마이그레이션
       placeAddress: json['placeAddress'],
     );
   }
@@ -86,7 +81,6 @@ class EventItem {
       'scheduleName': title,
       'scheduleStartTime': startAt.toIso8601String(),
       'scheduleEndTime': endAt.toIso8601String(),
-      'location': location,
       'memo': memo,
       'd_Day': useDDay,
       'autoTimeCheck': useAutoTimeNotification,
@@ -98,14 +92,14 @@ class EventItem {
   }
 
   /// 위치 정보가 있는지 확인
-  bool get hasLocation => latitude != null && longitude != null;
+  bool get hasLocation => placeName != null && placeName!.isNotEmpty;
 
   /// 위치 표시 텍스트 생성
   String get locationDisplayText {
     if (placeName != null && placeAddress != null) {
       return '$placeName\n$placeAddress';
-    } else if (location != null) {
-      return location!;
+    } else if (placeName != null) {
+      return placeName!;
     }
     return '위치 정보 없음';
   }

@@ -19,23 +19,27 @@ class LocationSearchWidget extends StatefulWidget {
 
 class _LocationSearchWidgetState extends State<LocationSearchWidget> {
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _manualInputController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   
   List<PlaceInfo> _searchResults = [];
   bool _isSearching = false;
   bool _showResults = false;
+  bool _showManualInput = false;
 
   @override
   void initState() {
     super.initState();
     if (widget.initialLocation != null) {
       _searchController.text = widget.initialLocation!;
+      _manualInputController.text = widget.initialLocation!;
     }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _manualInputController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
   }
@@ -137,6 +141,31 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
     }
   }
 
+  /// 수동 입력으로 장소 선택
+  void _selectManualLocation() {
+    final manualText = _manualInputController.text.trim();
+    if (manualText.isNotEmpty) {
+      final manualPlace = PlaceInfo(
+        id: 'manual_input',
+        name: manualText,
+        address: '수동 입력',
+        latitude: null,
+        longitude: null,
+      );
+      _selectLocation(manualPlace);
+    }
+  }
+
+  /// 수동 입력 토글
+  void _toggleManualInput() {
+    setState(() {
+      _showManualInput = !_showManualInput;
+      if (_showManualInput) {
+        _showResults = false;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -200,20 +229,75 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
         
         const SizedBox(height: 8),
         
-        // 현재 위치 버튼
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: _isSearching ? null : _useCurrentLocation,
-            icon: const Icon(Icons.my_location, size: 18),
-            label: const Text('현재 위치 사용'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              side: const BorderSide(color: Colors.grey),
-              foregroundColor: Colors.white,
+        // 버튼들 (현재 위치, 수동 입력)
+        Row(
+          children: [
+            // 현재 위치 버튼
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _isSearching ? null : _useCurrentLocation,
+                icon: const Icon(Icons.my_location, size: 18),
+                label: const Text('현재 위치'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  side: const BorderSide(color: Colors.grey),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+            
+            const SizedBox(width: 8),
+            
+            // 수동 입력 버튼
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _toggleManualInput,
+                icon: Icon(_showManualInput ? Icons.close : Icons.edit, size: 18),
+                label: Text(_showManualInput ? '닫기' : '수동 입력'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  side: const BorderSide(color: Colors.grey),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 8),
+        
+        // 수동 입력 필드
+        if (_showManualInput)
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF2B2B2B),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[700]!),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _manualInputController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      hintText: '위치를 직접 입력하세요',
+                      hintStyle: TextStyle(color: Colors.grey),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.check, color: Colors.green),
+                  onPressed: _selectManualLocation,
+                ),
+              ],
             ),
           ),
-        ),
         
         const SizedBox(height: 8),
         

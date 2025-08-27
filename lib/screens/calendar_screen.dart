@@ -500,8 +500,8 @@ class _EventList extends StatelessWidget {
                               color: Colors.white,
                               fontSize: 14,
                               fontWeight: FontWeight.w600)),
-                      if (e.location != null && e.location!.isNotEmpty)
-                        Text(e.location!,
+                      if (e.placeName != null && e.placeName!.isNotEmpty)
+                        Text(e.placeName!,
                             style: GoogleFonts.inter(
                                 color: Colors.white70, fontSize: 12)),
                     ],
@@ -561,9 +561,9 @@ class _EventViewerSheet extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               _InfoRow(icon: Icons.access_time_rounded, text: _formatDateTimeRange(event.startAt, event.endAt)),
-              if (event.location != null && event.location!.isNotEmpty) ...[
+              if (event.placeName != null && event.placeName!.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                _InfoRow(icon: Icons.location_on_outlined, text: event.location!),
+                _InfoRow(icon: Icons.location_on_outlined, text: event.placeName!),
               ],
               if (event.memo != null && event.memo!.isNotEmpty) ...[
                 const SizedBox(height: 16),
@@ -630,7 +630,7 @@ class _EventEditorSheet extends StatefulWidget {
 
 class _EventEditorSheetState extends State<_EventEditorSheet> {
   late TextEditingController _title;
-  late TextEditingController _location;
+  late TextEditingController _placeName;
   late TextEditingController _memo;
   late DateTime _startAt;
   late DateTime _endAt;
@@ -648,7 +648,7 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
             widget.selectedDate.day, now.hour, 0);
 
     _title = TextEditingController(text: init?.title ?? '');
-    _location = TextEditingController(text: init?.location ?? '');
+    _placeName = TextEditingController(text: init?.placeName ?? '');
     _memo = TextEditingController(text: init?.memo ?? '');
     _startAt = initialDateTime;
     _endAt = init?.endAt ?? _startAt.add(const Duration(hours: 1));
@@ -659,8 +659,8 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
     if (init?.latitude != null && init?.longitude != null) {
       _selectedPlace = PlaceInfo(
         id: 'existing_location',
-        name: init?.placeName ?? init?.location ?? '',
-        address: init?.placeAddress ?? init?.location ?? '',
+        name: init?.placeName ?? '',
+        address: init?.placeAddress ?? '',
         latitude: init?.latitude,
         longitude: init?.longitude,
       );
@@ -670,7 +670,7 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
   @override
   void dispose() {
     _title.dispose();
-    _location.dispose();
+    _placeName.dispose();
     _memo.dispose();
     super.dispose();
   }
@@ -709,9 +709,9 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
               _DarkInput(controller: _title, hint: '제목'),
               const SizedBox(height: 12),
               _DarkInput(
-                controller: _location,
+                controller: _placeName,
                 hint: '위치',
-                readOnly: true,
+                readOnly: false,
                 onTap: _openLocationPicker,
               ),
               const SizedBox(height: 16),
@@ -791,12 +791,12 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _LocationPickerSheet(
-        initialLocation: _location.text.trim().isEmpty ? null : _location.text,
+        initialLocation: _placeName.text.trim().isEmpty ? null : _placeName.text,
       ),
     );
     if (picked != null) {
       setState(() {
-        _location.text = '${picked.name} (${picked.address})';
+        _placeName.text = picked.name;
         _selectedPlace = picked;
       });
     }
@@ -813,7 +813,6 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
     final event = EventItem(
       id: widget.initial?.id ?? 'new',
       title: _title.text.trim(),
-      location: _location.text.trim().isEmpty ? null : _location.text.trim(),
       startAt: _startAt,
       endAt: _endAt,
       memo: _memo.text.trim().isEmpty ? null : _memo.text.trim(),
@@ -821,7 +820,7 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
       useAutoTimeNotification: _useAutoTime,
       latitude: _selectedPlace?.latitude,
       longitude: _selectedPlace?.longitude,
-      placeName: _selectedPlace?.name,
+      placeName: _placeName.text.trim().isEmpty ? null : _placeName.text.trim(),
       placeAddress: _selectedPlace?.address,
     );
     Navigator.of(context).pop({'action': 'save', 'event': event});
