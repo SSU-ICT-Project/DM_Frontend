@@ -37,6 +37,18 @@ dependencies:
   permission_handler: ^12.0.1
   firebase_core: ^4.0.0
   firebase_messaging: ^16.0.0
+  # 위치 검색을 위한 패키지들
+  google_maps_flutter: ^2.5.3
+  geolocator: ^10.1.0
+  geocoding: ^2.1.1
+  # Kakao Local API 사용을 위한 패키지
+  dio: ^5.4.0
+  # 환경 변수 관리
+  flutter_dotenv: ^5.1.0
+  # 환경 변수 파일 포함
+  assets:
+    - .env
+    - .env.example
 
 dev_dependencies:
   flutter_test:

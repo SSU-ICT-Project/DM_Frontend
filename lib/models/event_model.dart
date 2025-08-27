@@ -11,6 +11,11 @@ class EventItem {
   final String? memo;
   final bool useDDay;
   final bool useAutoTimeNotification;
+  // 위치 정보 확장
+  final double? latitude;
+  final double? longitude;
+  final String? placeName;
+  final String? placeAddress;
 
   const EventItem({
     required this.id,
@@ -21,6 +26,10 @@ class EventItem {
     this.memo,
     this.useDDay = false,
     this.useAutoTimeNotification = false,
+    this.latitude,
+    this.longitude,
+    this.placeName,
+    this.placeAddress,
   });
 
   EventItem copyWith({
@@ -32,6 +41,10 @@ class EventItem {
     String? memo,
     bool? useDDay,
     bool? useAutoTimeNotification,
+    double? latitude,
+    double? longitude,
+    String? placeName,
+    String? placeAddress,
   }) {
     return EventItem(
       id: id ?? this.id,
@@ -42,6 +55,10 @@ class EventItem {
       memo: memo ?? this.memo,
       useDDay: useDDay ?? this.useDDay,
       useAutoTimeNotification: useAutoTimeNotification ?? this.useAutoTimeNotification,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      placeName: placeName ?? this.placeName,
+      placeAddress: placeAddress ?? this.placeAddress,
     );
   }
 
@@ -56,6 +73,10 @@ class EventItem {
       memo: json['memo'],
       useDDay: json['d_Day'] ?? false,
       useAutoTimeNotification: json['autoTimeCheck'] ?? false,
+      latitude: json['latitude']?.toDouble(),
+      longitude: json['longitude']?.toDouble(),
+      placeName: json['placeName'],
+      placeAddress: json['placeAddress'],
     );
   }
 
@@ -69,6 +90,23 @@ class EventItem {
       'memo': memo,
       'd_Day': useDDay,
       'autoTimeCheck': useAutoTimeNotification,
+      'latitude': latitude,
+      'longitude': longitude,
+      'placeName': placeName,
+      'placeAddress': placeAddress,
     };
+  }
+
+  /// 위치 정보가 있는지 확인
+  bool get hasLocation => latitude != null && longitude != null;
+
+  /// 위치 표시 텍스트 생성
+  String get locationDisplayText {
+    if (placeName != null && placeAddress != null) {
+      return '$placeName\n$placeAddress';
+    } else if (location != null) {
+      return location!;
+    }
+    return '위치 정보 없음';
   }
 }

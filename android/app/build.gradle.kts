@@ -6,6 +6,13 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+// 환경 변수 로드
+val properties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    properties.load(localPropertiesFile.inputStream())
+}
+
 android {
     namespace = "com.example.frontend"
     compileSdk = flutter.compileSdkVersion
@@ -29,6 +36,10 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // 환경 변수에서 API 키 가져오기
+        val googleMapsApiKey = properties.getProperty("GOOGLE_MAPS_API_KEY") ?: ""
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
     }
 
     buildTypes {

@@ -6,6 +6,8 @@ import 'dart:async';
 import '../widgets/app_bottom_nav.dart';
 import '../models/event_model.dart';
 import '../services/api_service.dart';
+import '../widgets/location_search_widget.dart';
+import '../services/location_service.dart';
 import 'goals_screen.dart';
 import 'settings_screen.dart';
 
@@ -634,6 +636,7 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
   late DateTime _endAt;
   bool _useDDay = false;
   bool _useAutoTime = false;
+  PlaceInfo? _selectedPlace;
 
   @override
   void initState() {
@@ -651,6 +654,17 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
     _endAt = init?.endAt ?? _startAt.add(const Duration(hours: 1));
     _useDDay = init?.useDDay ?? false;
     _useAutoTime = init?.useAutoTimeNotification ?? false;
+    
+    // 기존 위치 정보가 있으면 PlaceInfo로 변환
+    if (init?.latitude != null && init?.longitude != null) {
+      _selectedPlace = PlaceInfo(
+        id: 'existing_location',
+        name: init?.placeName ?? init?.location ?? '',
+        address: init?.placeAddress ?? init?.location ?? '',
+        latitude: init?.latitude,
+        longitude: init?.longitude,
+      );
+    }
   }
 
   @override
@@ -772,13 +786,20 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
   }
 
   Future<void> _openLocationPicker() async {
-    final picked = await showModalBottomSheet<String?>(
+    final picked = await showModalBottomSheet<PlaceInfo?>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => const _LocationPickerSheet(),
+      builder: (ctx) => _LocationPickerSheet(
+        initialLocation: _location.text.trim().isEmpty ? null : _location.text,
+      ),
     );
-    if (picked != null) setState(() => _location.text = picked);
+    if (picked != null) {
+      setState(() {
+        _location.text = '${picked.name} (${picked.address})';
+        _selectedPlace = picked;
+      });
+    }
   }
 
   void _save() {
@@ -798,6 +819,10 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
       memo: _memo.text.trim().isEmpty ? null : _memo.text.trim(),
       useDDay: _useDDay,
       useAutoTimeNotification: _useAutoTime,
+      latitude: _selectedPlace?.latitude,
+      longitude: _selectedPlace?.longitude,
+      placeName: _selectedPlace?.name,
+      placeAddress: _selectedPlace?.address,
     );
     Navigator.of(context).pop({'action': 'save', 'event': event});
   }
@@ -956,22 +981,15 @@ class _DateTimePicker extends StatelessWidget {
 }
 
 class _LocationPickerSheet extends StatefulWidget {
-  const _LocationPickerSheet();
+  final String? initialLocation;
+  
+  const _LocationPickerSheet({this.initialLocation});
 
   @override
   State<_LocationPickerSheet> createState() => _LocationPickerSheetState();
 }
 
 class _LocationPickerSheetState extends State<_LocationPickerSheet> {
-  final TextEditingController _query = TextEditingController();
-  final List<String> _results = [];
-
-  @override
-  void dispose() {
-    _query.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -997,60 +1015,24 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('위치',
+                  Text('위치 선택',
                       style: GoogleFonts.inter(
                           color: Colors.white,
-                          fontSize: 14,
+                          fontSize: 18,
                           fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(child: _DarkInput(controller: _query, hint: '장소 검색')),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        height: 44,
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFFFF504A),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12))),
-                          onPressed: _search,
-                          child: const Text('검색'),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 16),
+                  LocationSearchWidget(
+                    initialLocation: widget.initialLocation,
+                    onLocationSelected: (place) {
+                      Navigator.of(context).pop(place);
+                    },
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView.builder(
-                controller: controller,
-                itemCount: _results.length,
-                itemBuilder: (context, i) {
-                  final item = _results[i];
-                  return ListTile(
-                    title:
-                    Text(item, style: GoogleFonts.inter(color: Colors.white)),
-                    onTap: () => Navigator.of(context).pop(item),
-                  );
-                },
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  void _search() {
-    final q = _query.text.trim();
-    if (q.isEmpty) return;
-    setState(() {
-      _results
-        ..clear()
-        ..addAll(List.generate(6, (i) => '$q 장소 결과 ${i + 1}'));
-    });
   }
 }
