@@ -838,12 +838,21 @@ class _DarkInput extends StatelessWidget {
           onTap: onTap,
           textAlign: TextAlign.start,
           textAlignVertical: maxLines == 1 ? TextAlignVertical.center : null,
-          decoration: InputDecoration.collapsed(
+          decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.inter(
                 fontSize: 15,
                 fontWeight: FontWeight.w400,
                 color: const Color(0xFF9E9E9E)),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            errorBorder: InputBorder.none,
+            disabledBorder: InputBorder.none,
+            isDense: true,
+            contentPadding: EdgeInsets.zero,
+            filled: true,
+            fillColor: const Color(0xFF2B2B2B),
           ),
           style: GoogleFonts.inter(fontSize: 17, color: Colors.white),
         ),
