@@ -4,11 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/permission_request_screen.dart';
 import 'screens/goals_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // 환경 변수 로드
+  await dotenv.load(fileName: ".env");
+  
   await Firebase.initializeApp();
   runApp(const MyApp());
 }

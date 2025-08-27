@@ -41,8 +41,15 @@ class LocationService {
     try {
       print('🔍 Google Places API로 장소 검색 시작: $query');
       
+      // dotenv 상태 확인
+      print('🔧 dotenv 상태 확인...');
+      print('🔧 dotenv.env: ${dotenv.env}');
+      print('🔧 GOOGLE_PLACES_API_KEY 존재 여부: ${dotenv.env.containsKey('GOOGLE_PLACES_API_KEY')}');
+      
       if (_googleApiKey.isEmpty) {
         print('❌ Google Places API 키가 설정되지 않았습니다.');
+        print('❌ _googleApiKey 길이: ${_googleApiKey.length}');
+        print('❌ dotenv.env 내용: ${dotenv.env}');
         return [];
       }
       
@@ -86,6 +93,10 @@ class LocationService {
       }
     } catch (e) {
       print('❌ Google 장소 검색 실패: $e');
+      print('❌ 에러 타입: ${e.runtimeType}');
+      if (e is Error) {
+        print('❌ 에러 스택 트레이스: ${e.stackTrace}');
+      }
     }
     return [];
   }
