@@ -45,10 +45,6 @@ dependencies:
   dio: ^5.4.0
   # 환경 변수 관리
   flutter_dotenv: ^5.1.0
-  # 환경 변수 파일 포함
-  assets:
-    - .env
-    - .env.example
 
 dev_dependencies:
   flutter_test:
@@ -71,6 +67,11 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # 환경 변수 파일 포함
+  assets:
+    - .env
+    - .env.example
 
   # To add assets to your application, add an assets section, like this:
   # assets:
