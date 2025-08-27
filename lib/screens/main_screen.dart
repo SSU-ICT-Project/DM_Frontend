@@ -12,12 +12,12 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0;
+  int _currentIndex = 1; // 홈(목표 화면)을 기본 화면으로 설정
 
   final List<Widget> _screens = [
-    const GoalsScreen(),
-    const CalendarScreen(),
-    const SettingsScreen(),
+    const CalendarScreen(),    // 인덱스 0: 캘린더
+    const GoalsScreen(),       // 인덱스 1: 홈(목표)
+    const SettingsScreen(),    // 인덱스 2: 설정
   ];
 
   @override
