@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_usage_model.dart';
 import 'api_service.dart';
 import 'usage_reporter.dart';
+import 'dart:convert'; // jsonDecode, jsonEncode 추가
 
 class AppUsageService {
   static const String _lastSyncKey = 'lastAppUsageSync';
@@ -18,15 +19,28 @@ class AppUsageService {
       final appUsage = await _collectAppUsage(date, specificApps);
       
       if (appUsage != null) {
-        // 백엔드로 전송
-        final response = await ApiService.sendAppUsage(appUsage);
+        // 백엔드로 전송 (새로운 screenTime/cure 엔드포인트 사용)
+        final cureResponse = await ApiService.sendScreenTimeCureWithResponse(appUsage);
         
-        if (response.statusCode == 200) {
-          print('앱 사용량 전송 성공: ${date.toIso8601String()}');
+        if (cureResponse != null && cureResponse.isSuccess) {
+          print('스크린타임 치료 메시지 생성 성공: ${date.toIso8601String()}');
+          print('응답 메시지: ${cureResponse.returnMessage}');
+          print('치료 데이터: ${cureResponse.data}');
           await _updateLastSyncTime(date);
+          await _saveLastSentData(appUsage); // 성공 시 데이터 저장
         } else {
-          print('앱 사용량 전송 실패: ${response.statusCode}');
-          print('응답 내용: ${response.body}');
+          print('스크린타임 치료 메시지 생성 실패');
+          
+          // 실패 시 기존 엔드포인트로 재시도 (하위 호환성)
+          print('기존 엔드포인트로 재시도 중...');
+          final fallbackResponse = await ApiService.sendAppUsage(appUsage);
+          if (fallbackResponse.statusCode == 200) {
+            print('기존 엔드포인트로 전송 성공');
+            await _updateLastSyncTime(date);
+            await _saveLastSentData(appUsage); // 성공 시 데이터 저장
+          } else {
+            print('기존 엔드포인트 전송도 실패: ${fallbackResponse.statusCode}');
+          }
         }
       }
     } catch (e) {
@@ -44,7 +58,14 @@ class AppUsageService {
       
       // 사용자 ID 가져오기 (SharedPreferences에서)
       final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString(_userIdKey) ?? 'unknown';
+      String userId = prefs.getString(_userIdKey) ?? '';
+      
+      // 사용자 ID가 없으면 기본값 사용 (테스트용)
+      if (userId.isEmpty) {
+        userId = 'default_user';
+        print('⚠️ 사용자 ID가 설정되지 않음, 기본값 사용: $userId');
+      }
+      
       print('👤 사용자 ID: $userId');
       
       // 앱 사용량 요약 가져오기
@@ -169,5 +190,40 @@ class AppUsageService {
   static Future<void> syncSpecificApps(Set<String> packageNames) async {
     final now = DateTime.now();
     await collectAndSendUsage(date: now, specificApps: packageNames);
+  }
+
+  // 사용자 ID 설정
+  static Future<void> setUserId(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userIdKey, userId);
+    print('사용자 ID 설정 완료: $userId');
+  }
+
+  // 사용자 ID 가져오기
+  static Future<String?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_userIdKey);
+  }
+
+  // 마지막으로 전송된 앱 사용량 데이터 가져오기
+  static Future<AppUsageModel?> getLastSentData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastDataStr = prefs.getString('lastSentAppUsageData');
+    
+    if (lastDataStr != null) {
+      try {
+        final Map<String, dynamic> data = jsonDecode(lastDataStr);
+        return AppUsageModel.fromJson(data);
+      } catch (e) {
+        print('마지막 전송 데이터 파싱 오류: $e');
+      }
+    }
+    return null;
+  }
+
+  // 전송된 데이터 저장
+  static Future<void> _saveLastSentData(AppUsageModel data) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('lastSentAppUsageData', jsonEncode(data.toJson()));
   }
 }

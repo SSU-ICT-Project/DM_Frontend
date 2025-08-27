@@ -8,6 +8,7 @@ import '../models/app_usage_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/self_development_time_model.dart';
 import '../models/event_model.dart';
+import '../models/app_usage_model.dart';
 
 class ApiService {
   static const String baseUrl = 'https://api.dm.letzgo.site/rest-api/v1';
@@ -119,6 +120,9 @@ class ApiService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('accessToken', accessToken);
         await prefs.setString('refreshToken', refreshToken);
+
+        // 사용자 ID 저장 (이메일을 임시로 사용자 ID로 사용)
+        await prefs.setString('userId', email);
 
         print('로그인 성공: 토큰 저장 완료');
         return null;
@@ -303,6 +307,7 @@ class ApiService {
     return _sendRequest((headers) => http.get(url, headers: headers));
   }
 
+  // 앱 사용량 전송 (기존 엔드포인트 - 하위 호환성 유지)
   static Future<http.Response> sendAppUsage(AppUsageModel appUsage) async {
     final url = Uri.parse('$baseUrl/app-usage');
     return _sendRequest((headers) => http.post(
@@ -310,6 +315,52 @@ class ApiService {
       headers: headers,
       body: jsonEncode(appUsage.toJson()),
     ));
+  }
+
+  // 스크린타임 치료 메시지 생성 (새로운 백엔드 API)
+  static Future<http.Response> sendScreenTimeCure(AppUsageModel appUsage) async {
+    final url = Uri.parse('$baseUrl/screenTime/cure');
+    return _sendRequest((headers) => http.post(
+      url,
+      headers: headers,
+      body: jsonEncode(appUsage.toJson()),
+    ));
+  }
+
+  // 스크린타임 치료 메시지 생성 (응답 파싱 포함)
+  static Future<ScreenTimeCureResponse?> sendScreenTimeCureWithResponse(AppUsageModel appUsage) async {
+    try {
+      print('🚀 스크린타임 치료 메시지 전송 시작...');
+      print('📤 전송 데이터: ${jsonEncode(appUsage.toJson())}');
+      
+      final response = await sendScreenTimeCure(appUsage);
+      
+      print('📥 응답 상태 코드: ${response.statusCode}');
+      print('📥 응답 헤더: ${response.headers}');
+      print('📥 응답 본문: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        final cureResponse = ScreenTimeCureResponse.fromJson(responseData);
+        
+        print('✅ 응답 파싱 성공:');
+        print('   - Return Code: ${cureResponse.returnCode}');
+        print('   - Return Message: ${cureResponse.returnMessage}');
+        print('   - Data: ${cureResponse.data}');
+        if (cureResponse.dmPage != null) {
+          print('   - Page Info: ${cureResponse.dmPage!.totalCount}개 항목, ${cureResponse.dmPage!.totalPages}페이지');
+        }
+        
+        return cureResponse;
+      } else {
+        print('❌ 스크린타임 치료 메시지 생성 실패: ${response.statusCode}');
+        print('❌ 응답 내용: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ 스크린타임 치료 메시지 생성 중 오류 발생: $e');
+      return null;
+    }
   }
 
   static Future<http.Response> getAppUsage(DateTime date) async {

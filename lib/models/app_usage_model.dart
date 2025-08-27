@@ -73,3 +73,55 @@ class AppUsageData {
     return 'AppUsageData(packageName: $packageName, appName: $appName, usageTimeMinutes: $usageTimeMinutes, lastUsed: $lastUsed)';
   }
 }
+
+// 백엔드 API 응답 모델
+class ScreenTimeCureResponse {
+  final String returnCode;
+  final String returnMessage;
+  final String data;
+  final DmPage? dmPage;
+
+  ScreenTimeCureResponse({
+    required this.returnCode,
+    required this.returnMessage,
+    required this.data,
+    this.dmPage,
+  });
+
+  factory ScreenTimeCureResponse.fromJson(Map<String, dynamic> json) {
+    return ScreenTimeCureResponse(
+      returnCode: json['returnCode'] ?? '',
+      returnMessage: json['returnMessage'] ?? '',
+      data: json['data'] ?? '',
+      dmPage: json['dmPage'] != null ? DmPage.fromJson(json['dmPage']) : null,
+    );
+  }
+
+  bool get isSuccess => returnCode == 'SUCCESS';
+}
+
+class DmPage {
+  final List<String> contents;
+  final int pageNumber;
+  final int pageSize;
+  final int totalPages;
+  final int totalCount;
+
+  DmPage({
+    required this.contents,
+    required this.pageNumber,
+    required this.pageSize,
+    required this.totalPages,
+    required this.totalCount,
+  });
+
+  factory DmPage.fromJson(Map<String, dynamic> json) {
+    return DmPage(
+      contents: List<String>.from(json['contents'] ?? []),
+      pageNumber: json['pageNumber'] ?? 0,
+      pageSize: json['pageSize'] ?? 0,
+      totalPages: json['totalPages'] ?? 0,
+      totalCount: json['totalCount'] ?? 0,
+    );
+  }
+}
