@@ -45,6 +45,7 @@ dependencies:
   dio: ^5.4.0
   # 환경 변수 관리
   flutter_dotenv: ^5.1.0
+  flutter_local_notifications: ^19.4.1
 
 dev_dependencies:
   flutter_test:
