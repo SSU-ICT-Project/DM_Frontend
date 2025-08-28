@@ -43,6 +43,25 @@ android {
         // 환경 변수에서 API 키 가져오기
         val googleMapsApiKey = properties.getProperty("GOOGLE_MAPS_API_KEY") ?: ""
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
+        
+        // 소셜 로그인 설정
+        val kakaoKey = properties.getProperty("KAKAO_NATIVE_APP_KEY")
+        val naverClientId = properties.getProperty("NAVER_CLIENT_ID")
+        val naverClientSecret = properties.getProperty("NAVER_CLIENT_SECRET")
+        
+        if (kakaoKey.isNullOrEmpty()) {
+            throw GradleException("KAKAO_NATIVE_APP_KEY가 local.properties에 설정되지 않았습니다.")
+        }
+        if (naverClientId.isNullOrEmpty()) {
+            throw GradleException("NAVER_CLIENT_ID가 local.properties에 설정되지 않았습니다.")
+        }
+        if (naverClientSecret.isNullOrEmpty()) {
+            throw GradleException("NAVER_CLIENT_SECRET이 local.properties에 설정되지 않았습니다.")
+        }
+        
+        manifestPlaceholders["KAKAO_NATIVE_APP_KEY"] = kakaoKey
+        manifestPlaceholders["NAVER_CLIENT_ID"] = naverClientId
+        manifestPlaceholders["NAVER_CLIENT_SECRET"] = naverClientSecret
     }
 
     buildTypes {
