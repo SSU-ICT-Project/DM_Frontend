@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -20,61 +21,65 @@ void _logFcmMessage(String event, RemoteMessage message) {
   if (kDebugMode) {
     print('--- FCM $event ---');
     print('Message ID: ${message.messageId}');
-    if (message.notification != null) {
-      print('  Original Title: ${message.notification!.title}');
-      print('  Original Body: ${message.notification!.body}');
-    }
     if (message.data.isNotEmpty) {
-      print('  Data: ${message.data}');
+      print('  Data Payload: ${message.data}');
     }
     print('-------------------');
   }
 }
 
-// 공통 알림 표시 함수
-void _showNotification(RemoteNotification notification) {
-  // body가 JSON 형태일 경우, content 필드를 추출
-  String notificationBody;
-  try {
-    final bodyJson = jsonDecode(notification.body!);
-    notificationBody = bodyJson['content'] ?? notification.body!;
-  } catch (e) {
-    notificationBody = notification.body!;
+// data 페이로드로부터 로컬 알림을 생성하고 표시하는 공통 함수
+void _showNotificationFromData(Map<String, dynamic> data) {
+  final String title = data['title'] as String? ?? '새로운 알림';
+  final dynamic bodyData = data['body'];
+
+  String notificationBody = '내용 없음';
+
+  if (bodyData is String) {
+    try {
+      final bodyJson = jsonDecode(bodyData);
+      if (bodyJson is Map<String, dynamic>) {
+        notificationBody = bodyJson['content'] as String? ?? bodyData;
+      }
+    } catch (e) {
+      notificationBody = bodyData;
+    }
+  } else if (bodyData is Map) {
+    notificationBody = bodyData['content'] as String? ?? '내용 없음';
   }
 
+  // 32비트 정수 범위 내에서 랜덤한 ID 생성
+  final int notificationId = Random().nextInt(2147483647);
+
   flutterLocalNotificationsPlugin.show(
-    notification.hashCode,
-    notification.title,
-    notificationBody, // 가공된 body 사용
+    notificationId,
+    title,
+    notificationBody,
     NotificationDetails(
       android: AndroidNotificationDetails(
         channel.id,
         channel.name,
         channelDescription: channel.description,
-        icon: 'launch_background', // TODO: 알림 아이콘 확인 필요
+        icon: 'launch_background',
       ),
     ),
   );
 }
 
-// 백그라운드 메시지 핸들러는 최상위 레벨에 정의되어야 합니다.
+// 백그라운드 메시지 핸들러
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   _logFcmMessage('Background Message', message);
-
-  // 백그라운드에서도 로컬 알림을 표시하기 위해 플러그인 초기화
   await setupFlutterNotifications();
-  if (message.notification != null) {
-    _showNotification(message.notification!); // 공통 함수 호출
-  }
+  _showNotificationFromData(message.data);
 }
 
-// Foreground 알림을 위한 로컬 알림 플러그인 인스턴스 생성
+// 로컬 알림 플러그인 인스턴스
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
-// Foreground 알림을 위한 채널 생성
+// 알림 채널
 const AndroidNotificationChannel channel = AndroidNotificationChannel(
   'high_importance_channel',
   'High Importance Notifications',
@@ -82,38 +87,25 @@ const AndroidNotificationChannel channel = AndroidNotificationChannel(
   importance: Importance.max,
 );
 
-// 로컬 알림 플러그인 초기화 함수 (중복 실행 방지)
+// 로컬 알림 플러그인 초기화 (중복 방지)
 bool _isFlutterLocalNotificationsInitialized = false;
 Future<void> setupFlutterNotifications() async {
   if (_isFlutterLocalNotificationsInitialized) return;
-
   await flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(channel);
-
-  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
   _isFlutterLocalNotificationsInitialized = true;
 }
 
-// FCM 관련 모든 설정을 처리하는 함수
+// FCM 전체 설정
 Future<void> setupFCM() async {
-  // 1. 로컬 알림 플러그인 설정
   await setupFlutterNotifications();
 
-  // 2. 알림 권한 요청
   final messaging = FirebaseMessaging.instance;
   final settings = await messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
+    alert: true, badge: true, sound: true,); 
   print('알림 권한 상태: ${settings.authorizationStatus}');
 
-  // 3. FCM 토큰 가져오기 및 서버 전송
   if (settings.authorizationStatus == AuthorizationStatus.authorized) {
     final fcmToken = await messaging.getToken();
     print("FCM Token: $fcmToken");
@@ -137,15 +129,13 @@ Future<void> setupFCM() async {
     });
   }
 
-  // 4. Foreground 메시지 리스너 설정
+  // Foreground 메시지 리스너
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     _logFcmMessage('Foreground Message', message);
-    if (message.notification != null) {
-      _showNotification(message.notification!); // 공통 함수 호출
-    }
+    _showNotificationFromData(message.data);
   });
 
-  // 5. 알림 클릭 시 이벤트 처리
+  // 알림 클릭 시 이벤트 처리
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     _logFcmMessage('Notification Clicked', message);
   });
