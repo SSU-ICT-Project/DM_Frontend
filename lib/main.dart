@@ -13,6 +13,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/goals_screen.dart';
 import 'screens/permission_request_screen.dart';
 import 'services/api_service.dart';
+import 'services/harmful_app_service.dart';
+
+// --- Global Keys & Services --- //
+
+// 앱의 어느 곳에서든 Navigator 상태에 접근하기 위한 GlobalKey
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+// 로컬 알림 플러그인 인스턴스
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 
 // --- FCM 설정 --- //
 
@@ -28,11 +38,9 @@ void _logFcmMessage(String event, RemoteMessage message) {
   }
 }
 
-// data 페이로드로부터 로컬 알림을 생성하고 표시하는 공통 함수
-void _showNotificationFromData(Map<String, dynamic> data) {
-  final String title = data['title'] as String? ?? '새로운 알림';
+// data 페이로드로부터 내용을 파싱하는 함수
+String _parseNotificationBody(Map<String, dynamic> data) {
   final dynamic bodyData = data['body'];
-
   String notificationBody = '내용 없음';
 
   if (bodyData is String) {
@@ -47,20 +55,28 @@ void _showNotificationFromData(Map<String, dynamic> data) {
   } else if (bodyData is Map) {
     notificationBody = bodyData['content'] as String? ?? '내용 없음';
   }
+  return notificationBody;
+}
 
-  // 32비트 정수 범위 내에서 랜덤한 ID 생성
+// 백그라운드 알림 표시 함수 (상단 배너)
+void _showHeadsUpNotification(Map<String, dynamic> data) {
+  final String title = data['title'] as String? ?? '새로운 알림';
+  final String body = _parseNotificationBody(data);
+
   final int notificationId = Random().nextInt(2147483647);
 
   flutterLocalNotificationsPlugin.show(
     notificationId,
     title,
-    notificationBody,
+    body,
     NotificationDetails(
       android: AndroidNotificationDetails(
         channel.id,
         channel.name,
         channelDescription: channel.description,
         icon: 'launch_background',
+        importance: Importance.max, // 헤드업 알림을 위해 중요도 최대로 설정
+        priority: Priority.high,   // 헤드업 알림을 위해 우선순위 최대로 설정
       ),
     ),
   );
@@ -72,12 +88,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   _logFcmMessage('Background Message', message);
   await setupFlutterNotifications();
-  _showNotificationFromData(message.data);
+  _showHeadsUpNotification(message.data);
 }
-
-// 로컬 알림 플러그인 인스턴스
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
 
 // 알림 채널
 const AndroidNotificationChannel channel = AndroidNotificationChannel(
@@ -102,10 +114,40 @@ Future<void> setupFCM() async {
   await setupFlutterNotifications();
 
   final messaging = FirebaseMessaging.instance;
-  final settings = await messaging.requestPermission(
-    alert: true, badge: true, sound: true,); 
-  print('알림 권한 상태: ${settings.authorizationStatus}');
+  await messaging.requestPermission(alert: true, badge: true, sound: true);
 
+  // Foreground 메시지 리스너 (인앱 팝업 처리)
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    _logFcmMessage('Foreground Message', message);
+
+    final BuildContext? context = navigatorKey.currentContext;
+    if (context != null) {
+      final String title = message.data['title'] ?? '새로운 알림';
+      final String body = _parseNotificationBody(message.data);
+
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text(title),
+          content: Text(body),
+          actions: [
+            TextButton(
+              child: const Text('확인'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+      );
+    }
+  });
+
+  // 알림 클릭 시 이벤트 처리
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    _logFcmMessage('Notification Clicked', message);
+  });
+
+  // 앱 시작 시 토큰 처리
+  final settings = await messaging.getNotificationSettings();
   if (settings.authorizationStatus == AuthorizationStatus.authorized) {
     final fcmToken = await messaging.getToken();
     print("FCM Token: $fcmToken");
@@ -128,17 +170,6 @@ Future<void> setupFCM() async {
       }
     });
   }
-
-  // Foreground 메시지 리스너
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    _logFcmMessage('Foreground Message', message);
-    _showNotificationFromData(message.data);
-  });
-
-  // 알림 클릭 시 이벤트 처리
-  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-    _logFcmMessage('Notification Clicked', message);
-  });
 }
 
 // --- 앱 시작점 --- //
@@ -152,6 +183,11 @@ Future<void> main() async {
 
   await setupFCM();
 
+  final prefs = await SharedPreferences.getInstance();
+  if (prefs.getString('accessToken') != null) {
+    await HarmfulAppService.start();
+  }
+
   runApp(const MyApp());
 }
 
@@ -161,6 +197,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey, // NavigatorKey 설정
       title: 'Digital Minimalism',
       theme: ThemeData(
         useMaterial3: true,

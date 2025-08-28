@@ -8,7 +8,6 @@ import '../models/app_usage_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/self_development_time_model.dart';
 import '../models/event_model.dart';
-import '../models/app_usage_model.dart';
 
 class ApiService {
   static const String baseUrl = 'https://api.dm.letzgo.site/rest-api/v1';
@@ -316,6 +315,30 @@ class ApiService {
       body: jsonEncode(appUsage.toJson()),
     ));
   }
+
+  // --- 새로운 실시간 메시지 요청 API --- //
+
+  // 동기부여 메시지 생성
+  static Future<http.Response> getMotivationMessage(String packageName) async {
+    final url = Uri.parse('$baseUrl/screenTime/motivate');
+    return _sendRequest((headers) => http.post(
+      url,
+      headers: headers,
+      body: jsonEncode({'packageName': packageName}),
+    ));
+  }
+
+  // 중독치료 메시지 생성
+  static Future<http.Response> getAddictionTreatmentMessage(String packageName) async {
+    final url = Uri.parse('$baseUrl/screenTime/cure');
+    return _sendRequest((headers) => http.post(
+      url,
+      headers: headers,
+      body: jsonEncode({'packageName': packageName}),
+    ));
+  }
+
+  // --- 기존 스크린타임 치료 API (하위 호환성) --- //
 
   // 스크린타임 치료 메시지 생성 (새로운 백엔드 API)
   static Future<http.Response> sendScreenTimeCure(AppUsageModel appUsage) async {
