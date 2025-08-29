@@ -83,29 +83,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
-  // 디버그 정보 표시
-  void _showDebugInfo() {
-    print('🐛 === 디버그 정보 ===');
-    print('📅 현재 표시 월: ${_visibleMonth.year}-${_visibleMonth.month}');
-    print('📋 가져온 월 수: ${_fetchedMonths.length}');
-    print('📋 가져온 월들: ${_fetchedMonths.toList()}');
-    print('📅 현재 일정 개수: ${_eventsByDate.values.fold(0, (sum, events) => sum + events.length)}');
-    
-    // 각 일정의 ID 정보 출력
-    _eventsByDate.forEach((date, events) {
-      print('📅 ${date.year}-${date.month}-${date.day}: ${events.length}개 일정');
-      for (int i = 0; i < events.length; i++) {
-        print('   ${i + 1}. ID: ${events[i].id}, 제목: ${events[i].title}');
-      }
-    });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('디버그 정보가 콘솔에 출력되었습니다.'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
+
 
   Future<void> _prefetchMonth(int month, int year) async {
     final prefetchDate = DateTime(year, month);
@@ -223,12 +201,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     icon: Icons.chevron_right,
                     onTap: () => _changeMonth(1),
                   ),
-                  // 디버그 버튼 추가
-                  IconButton(
-                    onPressed: _showDebugInfo,
-                    icon: const Icon(Icons.bug_report, color: Colors.white70),
-                    tooltip: '디버그 정보',
-                  ),
+                  
                 ],
               ),
             ),
