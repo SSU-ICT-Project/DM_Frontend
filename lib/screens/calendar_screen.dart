@@ -630,7 +630,6 @@ class _EventEditorSheet extends StatefulWidget {
 
 class _EventEditorSheetState extends State<_EventEditorSheet> {
   late TextEditingController _title;
-  late TextEditingController _placeName;
   late TextEditingController _memo;
   late DateTime _startAt;
   late DateTime _endAt;
@@ -648,7 +647,6 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
             widget.selectedDate.day, now.hour, 0);
 
     _title = TextEditingController(text: init?.title ?? '');
-    _placeName = TextEditingController(text: init?.placeName ?? '');
     _memo = TextEditingController(text: init?.memo ?? '');
     _startAt = initialDateTime;
     _endAt = init?.endAt ?? _startAt.add(const Duration(hours: 1));
@@ -670,7 +668,6 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
   @override
   void dispose() {
     _title.dispose();
-    _placeName.dispose();
     _memo.dispose();
     super.dispose();
   }
@@ -708,11 +705,30 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
               const SizedBox(height: 8),
               _DarkInput(controller: _title, hint: '제목'),
               const SizedBox(height: 12),
-              _DarkInput(
-                controller: _placeName,
-                hint: '위치',
-                readOnly: false,
+              InkWell(
                 onTap: _openLocationPicker,
+                child: Container(
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2B2B2B),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _selectedPlace?.name ?? '위치 선택',
+                          style: GoogleFonts.inter(
+                            fontSize: 17,
+                            color: _selectedPlace != null ? Colors.white : const Color(0xFF9E9E9E),
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.location_on, color: Colors.white70),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               _SwitchRow(
@@ -790,13 +806,10 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _LocationPickerSheet(
-        initialLocation: _placeName.text.trim().isEmpty ? null : _placeName.text,
-      ),
+      builder: (ctx) => const _LocationPickerSheet(),
     );
     if (picked != null) {
       setState(() {
-        _placeName.text = picked.name;
         _selectedPlace = picked;
       });
     }
@@ -810,19 +823,29 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
       return;
     }
 
+    // 기존 일정인지 새 일정인지 확인
+    final isExistingEvent = widget.initial != null;
+    final eventId = isExistingEvent ? widget.initial!.id : 'new';
+    
+    print('💾 일정 저장 시작');
+    print('   🆔 이벤트 ID: $eventId');
+    print('   📝 기존 일정 여부: $isExistingEvent');
+    if (isExistingEvent) {
+      print('   📋 기존 일정 정보: ${widget.initial!.toJson()}');
+    }
+
     final event = EventItem(
-      id: widget.initial?.id ?? 'new',
+      id: eventId,
       title: _title.text.trim(),
       startAt: _startAt,
       endAt: _endAt,
       memo: _memo.text.trim().isEmpty ? null : _memo.text.trim(),
       useDDay: _useDDay,
       useAutoTimeNotification: _useAutoTime,
-      latitude: _selectedPlace?.latitude,
-      longitude: _selectedPlace?.longitude,
-      placeName: _placeName.text.trim().isEmpty ? null : _placeName.text.trim(),
-      placeAddress: _selectedPlace?.address,
+      location: _selectedPlace?.toLocationInfo(),
     );
+    
+    print('   ✅ 생성된 EventItem: ${event.toJson()}');
     Navigator.of(context).pop({'action': 'save', 'event': event});
   }
 
@@ -980,9 +1003,7 @@ class _DateTimePicker extends StatelessWidget {
 }
 
 class _LocationPickerSheet extends StatefulWidget {
-  final String? initialLocation;
-  
-  const _LocationPickerSheet({this.initialLocation});
+  const _LocationPickerSheet();
 
   @override
   State<_LocationPickerSheet> createState() => _LocationPickerSheetState();
@@ -1021,7 +1042,6 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                           fontWeight: FontWeight.w700)),
                   const SizedBox(height: 16),
                   LocationSearchWidget(
-                    initialLocation: widget.initialLocation,
                     onLocationSelected: (place) {
                       Navigator.of(context).pop(place);
                     },

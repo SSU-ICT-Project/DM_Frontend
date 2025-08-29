@@ -215,6 +215,74 @@ class PlaceInfo {
   String toString() {
     return 'PlaceInfo(id: $id, name: $name, address: $address)';
   }
+
+  /// LocationInfo로 변환하는 메서드
+  LocationInfo toLocationInfo() {
+    return LocationInfo(
+      placeName: name,
+      placeAddress: address,
+      latitude: latitude?.toString() ?? '',
+      longitude: longitude?.toString() ?? '',
+    );
+  }
+}
+
+/// LocationInfo 클래스 (EventItem과 호환성을 위해)
+class LocationInfo {
+  final String placeName;
+  final String placeAddress;
+  final String latitude;
+  final String longitude;
+
+  const LocationInfo({
+    required this.placeName,
+    required this.placeAddress,
+    required this.latitude,
+    required this.longitude,
+  });
+
+  factory LocationInfo.fromJson(Map<String, dynamic> json) {
+    return LocationInfo(
+      placeName: json['placeName'] ?? '',
+      placeAddress: json['placeAddress'] ?? '',
+      latitude: json['latitude']?.toString() ?? '',
+      longitude: json['longitude']?.toString() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    final json = {
+      'placeName': placeName,
+      'placeAddress': placeAddress,
+      'latitude': latitude,
+      'longitude': longitude,
+    };
+    
+    print('🗺️ LocationInfo.toJson() 결과:');
+    print('   📍 장소명: $placeName');
+    print('   🏠 주소: $placeAddress');
+    print('   🗺️ 위도: $latitude');
+    print('   🗺️ 경도: $longitude');
+    
+    return json;
+  }
+
+  // double 타입으로 변환하는 getter들
+  double? get latitudeDouble {
+    try {
+      return double.parse(latitude);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  double? get longitudeDouble {
+    try {
+      return double.parse(longitude);
+    } catch (e) {
+      return null;
+    }
+  }
 }
 
 /// 좌표 정보를 담는 클래스

@@ -201,41 +201,73 @@ class ApiService {
 
   // 일정 생성
   static Future<void> createSchedule(EventItem event) async {
+    print('📅 일정 생성 시작');
+    print('📋 일정 정보: ${event.toJson()}');
+    
     final url = Uri.parse('$baseUrl/schedule');
+    print('🌐 API URL: $url');
+    
     final response = await _sendRequest((headers) => http.post(
       url,
       headers: headers,
       body: jsonEncode(event.toJson()),
     ));
 
+    print('📡 응답 상태 코드: ${response.statusCode}');
+    print('📡 응답 본문: ${response.body}');
+
     if (response.statusCode != 200) {
-      print('일정 생성 실패: ${response.body}');
+      print('❌ 일정 생성 실패: ${response.body}');
       throw Exception('일정 생성에 실패했습니다.');
     }
+    
+    print('✅ 일정 생성 성공');
   }
 
   // 일정 수정
   static Future<void> updateSchedule(EventItem event) async {
+    print('📝 일정 수정 시작');
+    print('📋 수정할 일정 정보: ${event.toJson()}');
+    
     final url = Uri.parse('$baseUrl/schedule/${event.id}');
+    print('🌐 API URL: $url');
+    
     final response = await _sendRequest((headers) => http.patch(
       url,
       headers: headers,
       body: jsonEncode(event.toJson()),
     ));
 
+    print('📡 응답 상태 코드: ${response.statusCode}');
+    print('📡 응답 본문: ${response.body}');
+
     if (response.statusCode != 200) {
+      print('❌ 일정 수정 실패: ${response.body}');
       throw Exception('일정 수정에 실패했습니다.');
     }
+    
+    print('✅ 일정 수정 성공');
   }
 
   // 일정 삭제
   static Future<void> deleteSchedule(String scheduleId) async {
+    print('🗑️ 일정 삭제 시작');
+    print('🆔 삭제할 일정 ID: $scheduleId');
+    
     final url = Uri.parse('$baseUrl/schedule/$scheduleId');
+    print('🌐 API URL: $url');
+    
     final response = await _sendRequest((headers) => http.delete(url, headers: headers));
 
+    print('📡 응답 상태 코드: ${response.statusCode}');
+    print('📡 응답 본문: ${response.body}');
+
     if (response.statusCode != 200) {
+      print('❌ 일정 삭제 실패: ${response.body}');
       throw Exception('일정 삭제에 실패했습니다.');
     }
+    
+    print('✅ 일정 삭제 성공');
   }
 
   // 메인 목표 API
