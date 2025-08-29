@@ -251,20 +251,12 @@ class LocationInfo {
   }
 
   Map<String, dynamic> toJson() {
-    final json = {
+    return {
       'placeName': placeName,
       'placeAddress': placeAddress,
       'latitude': latitude,
       'longitude': longitude,
     };
-    
-    print('🗺️ LocationInfo.toJson() 결과:');
-    print('   📍 장소명: $placeName');
-    print('   🏠 주소: $placeAddress');
-    print('   🗺️ 위도: $latitude');
-    print('   🗺️ 경도: $longitude');
-    
-    return json;
   }
 
   // double 타입으로 변환하는 getter들

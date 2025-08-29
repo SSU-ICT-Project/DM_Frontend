@@ -8,6 +8,7 @@ import '../models/app_usage_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/self_development_time_model.dart';
 import '../models/event_model.dart';
+import '../models/notification_model.dart'; // 알림 관련 모델 추가
 
 class ApiService {
   static const String baseUrl = 'https://api.dm.letzgo.site/rest-api/v1';
@@ -515,6 +516,284 @@ class ApiService {
       }
     } catch (e) {
       print('Error deleting FCM Token: $e');
+    }
+  }
+
+  // 회원 상세 정보 조회 API
+  static Future<MemberDetail?> getMemberDetail() async {
+    final url = Uri.parse('$baseUrl/member/detail');
+    print('🔍 회원 정보 조회 시작: $url');
+    
+    try {
+      final response = await _sendRequest((headers) => http.get(url, headers: headers));
+      print('📡 응답 상태 코드: ${response.statusCode}');
+      print('📡 응답 헤더: ${response.headers}');
+      print('📡 응답 본문: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        print('🔍 파싱된 응답 데이터: $responseData');
+        
+        final Map<String, dynamic>? data = responseData['data'];
+        print('🔍 data 필드: $data');
+        
+        if (data != null) {
+          final memberDetail = MemberDetail.fromJson(data);
+          print('✅ MemberDetail 객체 생성 성공: ${memberDetail.nickname}');
+          return memberDetail;
+        } else {
+          print('❌ data 필드가 null입니다.');
+          return null;
+        }
+      } else {
+        print('❌ 회원 정보 조회 실패: ${response.statusCode}');
+        print('❌ 응답 내용: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ 회원 정보 조회 중 오류 발생: $e');
+      print('❌ 오류 타입: ${e.runtimeType}');
+      return null;
+    }
+  }
+
+  // 회원 정보 수정 API (multipart/form-data 형식)
+  static Future<bool> updateMemberDetail(MemberDetail memberDetail) async {
+    final url = Uri.parse('$baseUrl/member');
+    print('🔍 회원 정보 수정 시작: $url');
+    
+    try {
+      // _sendRequest를 통해 인증 토큰 포함하여 multipart/form-data 요청 전송
+      final response = await _sendRequest((headers) async {
+        // multipart/form-data 요청 생성
+        final multipartRequest = http.MultipartRequest('PUT', url);
+        
+        // 헤더 설정
+        multipartRequest.headers.addAll(headers);
+        
+        // memberForm JSON 데이터를 fields로 추가
+        final memberFormJson = jsonEncode(memberDetail.toUpdateJson()['memberForm']);
+        multipartRequest.fields['memberForm'] = memberFormJson;
+        
+        // imageFile을 빈 파일로 추가 (0-byte file)
+        final emptyFile = http.MultipartFile.fromBytes(
+          'imageFile',
+          <int>[], // 빈 바이트 배열
+          filename: 'empty.txt',
+          // contentType 파라미터 제거하여 MediaType 타입 에러 해결
+        );
+        multipartRequest.files.add(emptyFile);
+        
+        print('📤 전송할 데이터 구조:');
+        print('   📋 memberForm: $memberFormJson');
+        print('   🖼️ imageFile: 빈 파일 (0-byte)');
+        
+        final streamedResponse = await multipartRequest.send();
+        return await http.Response.fromStream(streamedResponse);
+      });
+      
+      print('📡 응답 상태 코드: ${response.statusCode}');
+      print('📡 응답 본문: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        print('✅ 회원 정보 수정 성공');
+        return true;
+      } else {
+        print('❌ 회원 정보 수정 실패: ${response.statusCode}');
+        print('❌ 응답 내용: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ 회원 정보 수정 중 오류 발생: $e');
+      print('❌ 오류 타입: ${e.runtimeType}');
+      return false;
+    }
+  }
+
+  // 현재 사용자 ID 가져오기
+  static Future<int> _getCurrentUserId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // SharedPreferences에 저장된 모든 키 확인
+      final keys = prefs.getKeys();
+      print('🔍 SharedPreferences에 저장된 모든 키: $keys');
+      
+      // userId 관련 모든 데이터 확인
+      if (keys.contains('userId')) {
+        final userIdInt = prefs.getInt('userId');
+        final userIdString = prefs.getString('userId');
+        final userIdBool = prefs.getBool('userId');
+        final userIdDouble = prefs.getDouble('userId');
+        
+        print('🔍 userId 데이터 타입별 조회:');
+        print('   int: $userIdInt');
+        print('   String: $userIdString');
+        print('   bool: $userIdBool');
+        print('   double: $userIdDouble');
+      }
+      
+      // 먼저 int로 시도
+      var userId = prefs.getInt('userId');
+      print('🔍 SharedPreferences에서 int로 userId 조회: $userId');
+      
+      // int가 null이면 String으로 시도
+      if (userId == null) {
+        final userIdString = prefs.getString('userId');
+        print('🔍 SharedPreferences에서 String으로 userId 조회: $userIdString');
+        
+        if (userIdString != null && userIdString.isNotEmpty) {
+          try {
+            userId = int.parse(userIdString);
+            print('🔍 String을 int로 변환 성공: $userIdString -> $userId');
+            
+            // 변환 성공 시 int로 다시 저장 (선택사항)
+            // await prefs.setInt('userId', userId);
+            // print('🔍 userId를 int로 다시 저장: $userId');
+          } catch (e) {
+            print('⚠️ String을 int로 변환 실패: $userIdString, 0으로 설정');
+            userId = 0;
+          }
+        } else {
+          print('⚠️ userId가 null이거나 빈 문자열, 0으로 설정');
+          userId = 0;
+        }
+      }
+      
+      print('🔍 최종 사용자 ID: $userId');
+      return userId;
+    } catch (e, stackTrace) {
+      print('❌ _getCurrentUserId 실패: $e');
+      print('❌ 오류 스택: $stackTrace');
+      print('🔍 기본값 0 반환');
+      return 0;
+    }
+  }
+
+  // 알림 목록 조회 API
+  static Future<NotificationApiResponse?> getNotifications({
+    int page = 0,
+    int size = 20,
+  }) async {
+    print('🔍 getNotifications 시작');
+    print('🔍 파라미터: page=$page, size=$size');
+    
+    final currentUserId = await _getCurrentUserId();
+    print('🔍 현재 사용자 ID: $currentUserId');
+    
+    final url = Uri.parse('$baseUrl/notification').replace(
+      queryParameters: {
+        'notificationPage': jsonEncode({
+          'page': page,
+          'size': size,
+        }),
+        'loginUser': jsonEncode({
+          'id': currentUserId,
+        }),
+      },
+    );
+    
+    print('🔍 요청 URL: $url');
+    print('🔍 요청 파라미터:');
+    print('   notificationPage: ${jsonEncode({'page': page, 'size': size})}');
+    print('   loginUser: ${jsonEncode({'id': currentUserId})}');
+    
+    try {
+      final response = await _sendRequest((headers) => http.get(url, headers: headers));
+      print('📡 응답 상태 코드: ${response.statusCode}');
+      print('📡 응답 헤더: ${response.headers}');
+      print('📡 응답 본문 길이: ${response.body.length}');
+      print('📡 응답 본문 (처음 500자): ${response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body}');
+      
+      if (response.statusCode == 200) {
+        try {
+          final Map<String, dynamic> responseData = jsonDecode(response.body);
+          print('🔍 JSON 파싱 성공');
+          print('🔍 응답 데이터 키들: ${responseData.keys.toList()}');
+          
+          final notificationResponse = NotificationApiResponse.fromJson(responseData);
+          print('✅ 알림 목록 조회 성공');
+          print('✅ 응답 코드: ${notificationResponse.returnCode}');
+          print('✅ 응답 메시지: ${notificationResponse.returnMessage}');
+          if (notificationResponse.dmPage != null) {
+            print('✅ 페이지 정보: ${notificationResponse.dmPage!.contents.length}개 알림');
+          }
+          return notificationResponse;
+        } catch (parseError, stackTrace) {
+          print('❌ JSON 파싱 실패: $parseError');
+          print('❌ 파싱 에러 스택: $stackTrace');
+          print('❌ 파싱 실패한 응답 본문: ${response.body}');
+          return null;
+        }
+      } else {
+        print('❌ 알림 목록 조회 실패: ${response.statusCode}');
+        print('❌ 응답 내용: ${response.body}');
+        return null;
+      }
+    } catch (e, stackTrace) {
+      print('❌ 알림 목록 조회 중 오류 발생: $e');
+      print('❌ 오류 타입: ${e.runtimeType}');
+      print('❌ 오류 스택: $stackTrace');
+      return null;
+    }
+  }
+
+  // 알림 읽음 처리 API
+  static Future<bool> markNotificationsAsRead(List<int> notificationIds) async {
+    print('🔍 markNotificationsAsRead 시작');
+    print('🔍 읽음 처리할 알림 ID들: $notificationIds');
+    
+    final currentUserId = await _getCurrentUserId();
+    print('🔍 현재 사용자 ID: $currentUserId');
+    
+    final url = Uri.parse('$baseUrl/notification').replace(
+      queryParameters: {
+        'loginUser': jsonEncode({
+          'id': currentUserId,
+        }),
+      },
+    );
+    
+    print('🔍 요청 URL: $url');
+    print('🔍 요청 파라미터:');
+    print('   loginUser: ${jsonEncode({'id': currentUserId})}');
+    
+    final requestBody = {
+      'notificationIdList': notificationIds,
+    };
+    print('🔍 요청 본문: ${jsonEncode(requestBody)}');
+    
+    try {
+      final response = await _sendRequest((headers) => http.put(
+        url,
+        headers: headers,
+        body: jsonEncode(requestBody),
+      ));
+      
+      print('📡 응답 상태 코드: ${response.statusCode}');
+      print('📡 응답 헤더: ${response.headers}');
+      print('📡 응답 본문: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        try {
+          final responseData = jsonDecode(response.body);
+          print('✅ 알림 읽음 처리 성공');
+          print('✅ 응답 데이터: $responseData');
+          return true;
+        } catch (parseError) {
+          print('⚠️ 응답 파싱 실패했지만 상태 코드는 성공: $parseError');
+          return true;
+        }
+      } else {
+        print('❌ 알림 읽음 처리 실패: ${response.statusCode}');
+        print('❌ 응답 내용: ${response.body}');
+        return false;
+      }
+    } catch (e, stackTrace) {
+      print('❌ 알림 읽음 처리 중 오류 발생: $e');
+      print('❌ 오류 타입: ${e.runtimeType}');
+      print('❌ 오류 스택: $stackTrace');
+      return false;
     }
   }
 }
