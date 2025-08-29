@@ -209,6 +209,43 @@ class _HarmfulAppsScreenState extends State<HarmfulAppsScreen> {
     _saveHarmfulApps();
   }
 
+  Widget _buildAppIcon(String iconData, bool isSelected) {
+    try {
+      // Base64 문자열이 유효한지 확인
+      if (iconData.isEmpty) {
+        return _buildFallbackIcon(isSelected);
+      }
+      
+      // Base64 디코딩 시도
+      final bytes = base64Decode(iconData);
+      return Image.memory(
+        bytes,
+        width: 40,
+        height: 40,
+        errorBuilder: (context, error, stackTrace) => _buildFallbackIcon(isSelected),
+      );
+    } catch (e) {
+      // Base64 디코딩 실패 시 fallback 아이콘 사용
+      return _buildFallbackIcon(isSelected);
+    }
+  }
+
+  Widget _buildFallbackIcon(bool isSelected) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFFFF504A).withOpacity(0.2) : Colors.grey[800],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(
+        Icons.apps,
+        color: isSelected ? const Color(0xFFFF504A) : Colors.grey[400],
+        size: 20,
+      ),
+    );
+  }
+
   List<Map<String, String>> get _filteredApps {
     if (_searchQuery.isEmpty) {
       return _installedApps;
@@ -361,12 +398,7 @@ class _HarmfulAppsScreenState extends State<HarmfulAppsScreen> {
                             color: Colors.grey[900],
                             child: ListTile(
                               leading: (app['icon'] != null && app['icon']!.isNotEmpty)
-                                  ? Image.memory(
-                                      base64Decode(app['icon']!),
-                                      width: 40,
-                                      height: 40,
-                                      errorBuilder: (context, error, stackTrace) => Icon(Icons.apps), // Fallback icon
-                                    )
+                                  ? _buildAppIcon(app['icon']!, isSelected)
                                   : Container( // Fallback for when there is no icon
                                       width: 40,
                                       height: 40,
