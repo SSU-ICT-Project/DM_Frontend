@@ -46,6 +46,10 @@ dependencies:
   # 환경 변수 관리
   flutter_dotenv: ^5.1.0
   flutter_local_notifications: ^19.4.1
+  # 소셜 로그인
+  google_sign_in: ^6.2.1
+  kakao_flutter_sdk_user: ^1.9.7+3
+  flutter_naver_login : ^2.1.0
 
 dev_dependencies:
   flutter_test:
