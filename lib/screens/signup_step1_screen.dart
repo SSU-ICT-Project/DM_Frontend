@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
+import '../services/social_login_service.dart';
 import 'goals_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -130,6 +131,111 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen>
         builder: (_) => SignupStep2Screen(),
       ),
     );
+  }
+
+  // 구글 로그인
+  Future<void> _onGoogleSignIn() async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('구글 로그인 진행 중...')),
+      );
+
+      final result = await SocialLoginService.signInWithGoogle();
+      
+      if (result != null && result['success'] == true) {
+        if (!mounted) return;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('구글 로그인 성공! 🎉')),
+        );
+
+
+        // 로그인 성공 시 홈 화면으로 이동
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const GoalsScreen()),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('구글 로그인 실패: ${result?['error'] ?? '알 수 없는 오류'} 😥')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('구글 로그인 오류: $e 😥')),
+      );
+    }
+  }
+
+  // 카카오 로그인
+  Future<void> _onKakaoSignIn() async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('카카오 로그인 진행 중...')),
+      );
+
+      final result = await SocialLoginService.signInWithKakao();
+      
+      if (result != null && result['success'] == true) {
+        if (!mounted) return;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('카카오 로그인 성공! 🎉')),
+        );
+
+
+        // 로그인 성공 시 홈 화면으로 이동
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const GoalsScreen()),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('카카오 로그인 실패: ${result?['error'] ?? '알 수 없는 오류'} 😥')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('카카오 로그인 오류: $e 😥')),
+      );
+    }
+  }
+
+  // 네이버 로그인
+  Future<void> _onNaverSignIn() async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('네이버 로그인 진행 중...')),
+      );
+
+      final result = await SocialLoginService.signInWithNaver();
+      
+      if (result != null && result['success'] == true) {
+        if (!mounted) return;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('네이버 로그인 성공! 🎉')),
+        );
+
+
+        // 로그인 성공 시 홈 화면으로 이동
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const GoalsScreen()),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('네이버 로그인 실패: ${result?['error'] ?? '알 수 없는 오류'} 😥')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('네이버 로그인 오류: $e 😥')),
+      );
+    }
   }
 
   @override
@@ -326,14 +432,82 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen>
                         width: double.infinity,
                         height: 50,
                         child: OutlinedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('구글 로그인 연동 예정')),
-                            );
-                          },
+                          onPressed: () => _onGoogleSignIn(),
                           icon: const Icon(Icons.g_mobiledata, size: 24),
                           label: const Text(
                             'Google로 계속하기',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // 카카오 로그인 버튼
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _onKakaoSignIn(),
+                          icon: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEE500),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'K',
+                                style: TextStyle(
+                                  color: Color(0xFF000000),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          label: const Text(
+                            '카카오로 계속하기',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // 네이버 로그인 버튼
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _onNaverSignIn(),
+                          icon: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF03C75A),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'N',
+                                style: TextStyle(
+                                  color: Color(0xFF03C75A),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          label: const Text(
+                            '네이버로 계속하기',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
