@@ -34,7 +34,7 @@ class SignUpData {
 
   // 서버로 보낼 JSON 형식으로 변환하는 메서드
   Map<String, dynamic> toJson() {
-    return {
+    final jsonData = {
       'email': email,
       'password': password,
       'nickname': nickname,
@@ -47,6 +47,14 @@ class SignUpData {
       'motivationType': motivationType?.toString().split('.').last,
       'gender': gender,
     };
+    
+    // 로깅 추가
+    print('🔍 SignUpData.toJson() 호출됨');
+    print('🔍 averagePreparationTime 원본 값: "$averagePreparationTime"');
+    print('🔍 JSON 변환 결과: ${jsonData['averagePreparationTime']}');
+    print('🔍 전체 JSON 데이터: $jsonData');
+    
+    return jsonData;
   }
 }
 

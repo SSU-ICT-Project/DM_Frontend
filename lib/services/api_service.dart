@@ -139,22 +139,34 @@ class ApiService {
   // 회원가입 API 메서드
   static Future<String?> signUp(SignUpData data) async {
     final url = Uri.parse('$baseUrl/member');
+    
+    // 전송할 데이터 로깅
+    final requestBody = data.toJson();
+    print('🚀 회원가입 API 호출 시작');
+    print('📤 전송할 데이터: ${jsonEncode(requestBody)}');
+    print('🔍 averagePreparationTime 값: "${data.averagePreparationTime}"');
+    print('🔍 averagePreparationTime 타입: ${data.averagePreparationTime.runtimeType}');
+    
     try {
       final response = await http.post(
         url,
         headers: { 'Content-Type': 'application/json' },
-        body: jsonEncode(data.toJson()),
+        body: jsonEncode(requestBody),
       );
 
+      print('📡 응답 상태 코드: ${response.statusCode}');
+      print('📡 응답 본문: ${response.body}');
+
       if (response.statusCode == 200) {
-        print('회원가입 성공!');
+        print('✅ 회원가입 성공!');
         return null;
       } else {
         final Map<String, dynamic> responseBody = jsonDecode(response.body);
+        print('❌ 회원가입 실패: ${responseBody['message']}');
         return responseBody['message'] ?? '회원가입에 실패했습니다. 다시 시도해 주세요.';
       }
     } catch (e) {
-      print('회원가입 중 오류 발생: $e');
+      print('❌ 회원가입 중 오류 발생: $e');
       return '네트워크 오류가 발생했습니다.';
     }
   }

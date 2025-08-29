@@ -94,20 +94,28 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen>
     
     final timeText = prepTime.trim().toLowerCase();
     
-    // "30분", "1시간", "1시간 30분" 등의 형식 파싱
+    // "30", "30분", "1시간", "1시간 30분" 등의 형식 파싱
     int totalMinutes = 0;
     
-    if (timeText.contains('시간')) {
-      final hourMatch = RegExp(r'(\d+)시간').firstMatch(timeText);
-      if (hourMatch != null) {
-        totalMinutes += int.parse(hourMatch.group(1)!) * 60;
+    // 숫자만 입력된 경우 (예: "30" → 30분으로 처리)
+    if (RegExp(r'^\d+$').hasMatch(timeText)) {
+      totalMinutes = int.parse(timeText);
+    } else {
+      // "30분", "1시간", "1시간 30분" 등의 형식 파싱
+      if (timeText.contains('시간')) {
+        final hourMatch = RegExp(r'(\d+)시간').firstMatch(timeText);
+        if (hourMatch != null) {
+          final hours = int.parse(hourMatch.group(1)!);
+          totalMinutes += hours * 60;
+        }
       }
-    }
-    
-    if (timeText.contains('분')) {
-      final minuteMatch = RegExp(r'(\d+)분').firstMatch(timeText);
-      if (minuteMatch != null) {
-        totalMinutes += int.parse(minuteMatch.group(1)!);
+      
+      if (timeText.contains('분')) {
+        final minuteMatch = RegExp(r'(\d+)분').firstMatch(timeText);
+        if (minuteMatch != null) {
+          final minutes = int.parse(minuteMatch.group(1)!);
+          totalMinutes += minutes;
+        }
       }
     }
     
@@ -511,7 +519,13 @@ class _ModernInputField extends StatelessWidget {
             keyboardType: keyboardType,
             obscureText: isObscure,
             validator: validator,
+            style: const TextStyle(color: Colors.white), // 입력 텍스트 색상
             decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: const TextStyle(
+                color: Colors.white54, // 힌트 텍스트 색상을 더 명확하게
+                fontSize: 14,
+              ),
               prefixIcon: Icon(prefixIcon, color: Colors.white60),
               suffixIcon: onObscureToggle != null
                   ? IconButton(
@@ -522,6 +536,20 @@ class _ModernInputField extends StatelessWidget {
                       onPressed: onObscureToggle,
                     )
                   : null,
+              filled: true,
+              fillColor: const Color(0xFF1A1A1A), // 입력 필드 배경색
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.white24, width: 1.5),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.white24, width: 1.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: const Color(0xFFFF504A), width: 2),
+              ),
             ),
           ),
         ),
