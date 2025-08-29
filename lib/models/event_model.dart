@@ -65,8 +65,14 @@ class EventItem {
       );
     }
 
+    // 백엔드에서는 'id' 필드로 전송하고 있음
+    final scheduleId = json['id']?.toString() ?? json['scheduleId']?.toString();
+    
+    print('🔍 EventItem.fromJson() - 원본 JSON: $json');
+    print('🔍 EventItem.fromJson() - 추출된 ID: $scheduleId (원본: ${json['id']})');
+
     return EventItem(
-      id: json['scheduleId'].toString(),
+      id: scheduleId ?? 'unknown',
       title: json['scheduleName'],
       startAt: DateTime.parse(json['scheduleStartTime']),
       endAt: DateTime.parse(json['scheduleEndTime']),
@@ -90,7 +96,7 @@ class EventItem {
     };
     
     // 기존 일정 수정 시에만 ID 포함 (새 일정 생성 시에는 ID 제외)
-    if (id != 'new' && id.isNotEmpty) {
+    if (id != 'new' && id.isNotEmpty && id != 'unknown') {
       json['scheduleId'] = id;
     }
     

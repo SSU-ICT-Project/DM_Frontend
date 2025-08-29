@@ -186,15 +186,47 @@ class ApiService {
 
   // 월별 일정 조회
   static Future<List<EventItem>> getSchedulesByMonth(String yearMonth) async {
+    print('📅 월별 일정 조회 시작: $yearMonth');
+    
     final url = Uri.parse('$baseUrl/schedule/month?yearMonth=$yearMonth');
+    print('🌐 API URL: $url');
+    
     final response = await _sendRequest((headers) => http.get(url, headers: headers));
+
+    print('📡 응답 상태 코드: ${response.statusCode}');
+    print('📡 응답 본문: ${response.body}');
 
     if (response.statusCode == 200) {
       final body = jsonDecode(utf8.decode(response.bodyBytes));
+      print('📋 파싱된 응답 데이터: $body');
+      
       final List<dynamic>? contents = body['dmPage']?['contents'];
-      return contents?.map((json) => EventItem.fromJson(json)).toList() ?? [];
+      print('📋 일정 목록 개수: ${contents?.length ?? 0}');
+      
+      if (contents != null && contents.isNotEmpty) {
+        print('🔍 첫 번째 일정 데이터: ${contents.first}');
+        print('🔍 첫 번째 일정의 scheduleId: ${contents.first['scheduleId']}');
+      }
+      
+      final events = contents?.map((json) {
+        print('🔄 EventItem.fromJson() 호출: $json');
+        final event = EventItem.fromJson(json);
+        print('✅ 생성된 EventItem ID: ${event.id}');
+        return event;
+      }).toList() ?? [];
+      
+      print('📅 최종 일정 목록 (${events.length}개):');
+      for (int i = 0; i < events.length; i++) {
+        print('   ${i + 1}. ID: ${events[i].id}, 제목: ${events[i].title}');
+      }
+      
+      return events;
     } else {
-      if (response.statusCode == 401) return [];
+      if (response.statusCode == 401) {
+        print('❌ 인증 실패 (401)');
+        return [];
+      }
+      print('❌ 월별 일정 조회 실패: ${response.statusCode}');
       throw Exception('월별 일정을 불러오는데 실패했습니다.');
     }
   }

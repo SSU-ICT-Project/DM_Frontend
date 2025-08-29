@@ -83,6 +83,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
+  // 디버그 정보 표시
+  void _showDebugInfo() {
+    print('🐛 === 디버그 정보 ===');
+    print('📅 현재 표시 월: ${_visibleMonth.year}-${_visibleMonth.month}');
+    print('📋 가져온 월 수: ${_fetchedMonths.length}');
+    print('📋 가져온 월들: ${_fetchedMonths.toList()}');
+    print('📅 현재 일정 개수: ${_eventsByDate.values.fold(0, (sum, events) => sum + events.length)}');
+    
+    // 각 일정의 ID 정보 출력
+    _eventsByDate.forEach((date, events) {
+      print('📅 ${date.year}-${date.month}-${date.day}: ${events.length}개 일정');
+      for (int i = 0; i < events.length; i++) {
+        print('   ${i + 1}. ID: ${events[i].id}, 제목: ${events[i].title}');
+      }
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('디버그 정보가 콘솔에 출력되었습니다.'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   Future<void> _prefetchMonth(int month, int year) async {
     final prefetchDate = DateTime(year, month);
     final yearMonth = '${prefetchDate.year}-${prefetchDate.month.toString().padLeft(2, '0')}';
@@ -174,15 +198,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
         padding: const EdgeInsets.only(bottom: 16),
         child: Column(
           children: [
+            // 상단 네비게이션
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  Text(monthLabel, style: GoogleFonts.inter(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
-                  const Spacer(),
-                  _NavButton(icon: Icons.chevron_left, onTap: () => _changeMonth(-1)),
-                  const SizedBox(width: 8),
-                  _NavButton(icon: Icons.chevron_right, onTap: () => _changeMonth(1)),
+                  _NavButton(
+                    icon: Icons.chevron_left,
+                    onTap: () => _changeMonth(-1),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        '${_visibleMonth.year}년 ${_visibleMonth.month}월',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  _NavButton(
+                    icon: Icons.chevron_right,
+                    onTap: () => _changeMonth(1),
+                  ),
+                  // 디버그 버튼 추가
+                  IconButton(
+                    onPressed: _showDebugInfo,
+                    icon: const Icon(Icons.bug_report, color: Colors.white70),
+                    tooltip: '디버그 정보',
+                  ),
                 ],
               ),
             ),
@@ -630,6 +676,7 @@ class _EventEditorSheet extends StatefulWidget {
 
 class _EventEditorSheetState extends State<_EventEditorSheet> {
   late TextEditingController _title;
+  late TextEditingController _placeName;
   late TextEditingController _memo;
   late DateTime _startAt;
   late DateTime _endAt;
@@ -647,6 +694,7 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
             widget.selectedDate.day, now.hour, 0);
 
     _title = TextEditingController(text: init?.title ?? '');
+    _placeName = TextEditingController(text: init?.placeName ?? '');
     _memo = TextEditingController(text: init?.memo ?? '');
     _startAt = initialDateTime;
     _endAt = init?.endAt ?? _startAt.add(const Duration(hours: 1));
@@ -668,6 +716,7 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
   @override
   void dispose() {
     _title.dispose();
+    _placeName.dispose();
     _memo.dispose();
     super.dispose();
   }
@@ -705,30 +754,11 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
               const SizedBox(height: 8),
               _DarkInput(controller: _title, hint: '제목'),
               const SizedBox(height: 12),
-              InkWell(
+              _DarkInput(
+                controller: _placeName,
+                hint: '위치',
+                readOnly: false,
                 onTap: _openLocationPicker,
-                child: Container(
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2B2B2B),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _selectedPlace?.name ?? '위치 선택',
-                          style: GoogleFonts.inter(
-                            fontSize: 17,
-                            color: _selectedPlace != null ? Colors.white : const Color(0xFF9E9E9E),
-                          ),
-                        ),
-                      ),
-                      const Icon(Icons.location_on, color: Colors.white70),
-                    ],
-                  ),
-                ),
               ),
               const SizedBox(height: 16),
               _SwitchRow(
@@ -806,10 +836,13 @@ class _EventEditorSheetState extends State<_EventEditorSheet> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => const _LocationPickerSheet(),
+      builder: (ctx) => _LocationPickerSheet(
+        initialLocation: _placeName.text.trim().isEmpty ? null : _placeName.text,
+      ),
     );
     if (picked != null) {
       setState(() {
+        _placeName.text = picked.name;
         _selectedPlace = picked;
       });
     }
@@ -1003,7 +1036,9 @@ class _DateTimePicker extends StatelessWidget {
 }
 
 class _LocationPickerSheet extends StatefulWidget {
-  const _LocationPickerSheet();
+  final String? initialLocation;
+  
+  const _LocationPickerSheet({this.initialLocation});
 
   @override
   State<_LocationPickerSheet> createState() => _LocationPickerSheetState();
@@ -1042,6 +1077,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                           fontWeight: FontWeight.w700)),
                   const SizedBox(height: 16),
                   LocationSearchWidget(
+                    initialLocation: widget.initialLocation,
                     onLocationSelected: (place) {
                       Navigator.of(context).pop(place);
                     },
