@@ -4,10 +4,15 @@ import android.app.AppOpsManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Base64;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -15,6 +20,7 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import java.io.ByteArrayOutputStream;
 import io.flutter.embedding.android.FlutterFragmentActivity;
 import io.flutter.embedding.engine.FlutterEngine;
 import io.flutter.plugin.common.MethodChannel;
@@ -231,6 +237,7 @@ public class MainActivity extends FlutterFragmentActivity {
     }
 
     private List<Map<String, String>> getInstalledApps() {
+        Log.d("InstalledApps", "Executing getInstalledApps method. v2");
         List<Map<String, String>> apps = new ArrayList<>();
         try {
             android.content.pm.PackageManager pm = getPackageManager();
@@ -252,10 +259,31 @@ public class MainActivity extends FlutterFragmentActivity {
                 
                 // 앱 아이콘 정보 추가
                 try {
-                    android.graphics.drawable.Drawable icon = pm.getApplicationIcon(packageInfo.packageName);
-                    app.put("hasIcon", "true");
+                    Drawable icon = pm.getApplicationIcon(packageInfo);
+                    Bitmap bitmap;
+                    if (icon instanceof BitmapDrawable) {
+                        bitmap = ((BitmapDrawable) icon).getBitmap();
+                    } else {
+                        int width = icon.getIntrinsicWidth();
+                        int height = icon.getIntrinsicHeight();
+                        if (width <= 0 || height <= 0) {
+                            bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
+                        } else {
+                            bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                        }
+                        Canvas canvas = new Canvas(bitmap);
+                        icon.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+                        icon.draw(canvas);
+                    }
+                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+                    byte[] byteArray = byteArrayOutputStream.toByteArray();
+                    String encodedIcon = Base64.encodeToString(byteArray, Base64.DEFAULT);
+                    Log.d("InstalledApps", "Icon for " + packageInfo.packageName + ", length: " + encodedIcon.length());
+                    app.put("icon", encodedIcon);
                 } catch (Exception e) {
-                    app.put("hasIcon", "false");
+                    Log.e("InstalledApps", "Failed to get icon for " + packageInfo.packageName, e);
+                    app.put("icon", "");
                 }
                 
                 apps.add(app);

@@ -249,6 +249,15 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen>
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 80),
+
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12.0),
+                child: Image.asset(
+                  'assets/images/AppLogo.png',
+                  height: 100,
+                ),
+              ),
+              const SizedBox(height: 20),
               
               // 타이틀 섹션 (로고 제거)
               FadeTransition(
@@ -259,10 +268,8 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen>
                       'Digital Minimalism',
                       style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                         fontWeight: FontWeight.w800,
-                        background: Paint()
-                          ..shader = const LinearGradient(
-                            colors: [Color(0xFFFF504A), Color(0xFFFF6B6B)],
-                          ).createShader(const Rect.fromLTWH(0, 0, 200, 70)),
+                        color: const Color(0xFFFF504A),
+                        fontSize: 40,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -292,7 +299,7 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen>
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 22),
 
                       // 폼
                       Form(

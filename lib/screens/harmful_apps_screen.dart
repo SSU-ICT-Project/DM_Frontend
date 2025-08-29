@@ -33,7 +33,29 @@ class _HarmfulAppsScreenState extends State<HarmfulAppsScreen> {
 
     try {
       // 설치된 앱 목록 가져오기
-      final apps = await UsageReporter.getInstalledApps();
+      var apps = await UsageReporter.getInstalledApps();
+
+      apps = apps.where((app) {
+        final appName = app['appName'] ?? '';
+        final packageName = app['packageName']?.toLowerCase() ?? '';
+
+        if (appName.toLowerCase() == packageName) {
+          return false;
+        }
+
+        if (appName == 'System UI' || appName == 'System') {
+            return false;
+        }
+
+        if (packageName.startsWith('com.android.') ||
+            packageName.startsWith('com.google.android.gms') ||
+            packageName.startsWith('com.google.android.gsf') ||
+            packageName.startsWith('com.samsung.android.') ||
+            packageName.startsWith('com.qualcomm.')) {
+          return false;
+        }
+        return true;
+      }).toList();
       
       // 저장된 유해앱 목록 불러오기
       final prefs = await SharedPreferences.getInstance();
@@ -338,31 +360,31 @@ class _HarmfulAppsScreenState extends State<HarmfulAppsScreen> {
                             ),
                             color: Colors.grey[900],
                             child: ListTile(
-                              leading: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: isSelected ? const Color(0xFFFF504A).withOpacity(0.2) : Colors.grey[800],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.apps,
-                                  color: isSelected ? const Color(0xFFFF504A) : Colors.grey[400],
-                                  size: 20,
-                                ),
-                              ),
+                              leading: (app['icon'] != null && app['icon']!.isNotEmpty)
+                                  ? Image.memory(
+                                      base64Decode(app['icon']!),
+                                      width: 40,
+                                      height: 40,
+                                      errorBuilder: (context, error, stackTrace) => Icon(Icons.apps), // Fallback icon
+                                    )
+                                  : Container( // Fallback for when there is no icon
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? const Color(0xFFFF504A).withOpacity(0.2) : Colors.grey[800],
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        Icons.apps,
+                                        color: isSelected ? const Color(0xFFFF504A) : Colors.grey[400],
+                                        size: 20,
+                                      ),
+                                    ),
                               title: Text(
                                 appName,
                                 style: TextStyle(
                                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                                   color: isSelected ? const Color(0xFFFF504A) : Colors.white,
-                                ),
-                              ),
-                              subtitle: Text(
-                                packageName,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[400],
                                 ),
                               ),
                               trailing: Switch(

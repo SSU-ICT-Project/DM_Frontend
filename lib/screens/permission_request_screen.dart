@@ -11,7 +11,7 @@ class PermissionRequestScreen extends StatefulWidget {
   State<PermissionRequestScreen> createState() => _PermissionRequestScreenState();
 }
 
-class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
+class _PermissionRequestScreenState extends State<PermissionRequestScreen> with WidgetsBindingObserver {
   bool _isLoading = false;
   final List<PermissionStatus> _permissionStatuses = [];
   final List<String> _permissionNames = [
@@ -22,7 +22,21 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkPermissions();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkPermissions();
+    }
   }
 
   Future<void> _checkPermissions() async {
