@@ -11,9 +11,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'screens/goals_screen.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'screens/permission_request_screen.dart';
 import 'services/api_service.dart';
 import 'services/harmful_app_service.dart';
@@ -182,28 +179,6 @@ Future<void> main() async {
   await dotenv.load(fileName: ".env");
   await Firebase.initializeApp();
 
-  // 카카오 SDK 초기화
-  try {
-    final nativeAppKey = dotenv.env['KAKAO_NATIVE_APP_KEY'];
-    final javaScriptAppKey = dotenv.env['KAKAO_JAVASCRIPT_APP_KEY'];
-    
-    if (nativeAppKey == null || nativeAppKey.isEmpty) {
-      throw Exception('KAKAO_NATIVE_APP_KEY 환경변수가 설정되지 않았습니다.');
-    }
-    if (javaScriptAppKey == null || javaScriptAppKey.isEmpty) {
-      throw Exception('KAKAO_JAVASCRIPT_APP_KEY 환경변수가 설정되지 않았습니다.');
-    }
-    
-    KakaoSdk.init(
-      nativeAppKey: nativeAppKey,
-      javaScriptAppKey: javaScriptAppKey,
-    );
-    print('카카오 SDK 초기화 성공');
-  } catch (e) {
-    print('카카오 SDK 초기화 실패: $e');
-  }
-
-
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   await setupFCM();
@@ -222,6 +197,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey, // NavigatorKey 설정
       title: 'Digital Minimalism',
       theme: ThemeData(
         useMaterial3: true,
@@ -337,18 +313,15 @@ class _PermissionCheckScreenState extends State<PermissionCheckScreen> {
 
   Future<void> _checkPermissions() async {
     try {
-      // 먼저 저장된 권한 상태 확인
       final prefs = await SharedPreferences.getInstance();
       final savedPermissionsGranted = prefs.getBool('permissions_granted') ?? false;
-      
+
       if (savedPermissionsGranted) {
-        // 저장된 상태가 있으면 바로 메인 화면으로 이동 (권한 재확인 없이)
         setState(() {
           _permissionsGranted = true;
           _isLoading = false;
         });
       } else {
-        // 저장된 상태가 없으면 권한 상태 확인
         final permissions = [
           Permission.notification,
           Permission.location,
@@ -366,7 +339,6 @@ class _PermissionCheckScreenState extends State<PermissionCheckScreen> {
           }
         }
 
-        // 모든 권한이 이미 허용된 경우 상태 저장
         if (allGranted) {
           await prefs.setBool('permissions_granted', true);
           await prefs.setString('permissions_granted_date', DateTime.now().toIso8601String());
@@ -399,7 +371,6 @@ class _PermissionCheckScreenState extends State<PermissionCheckScreen> {
       );
     }
 
-    // 권한이 이미 허용된 경우 메인 화면으로, 그렇지 않으면 권한 요청 화면으로
     return _permissionsGranted ? const GoalsScreen() : const PermissionRequestScreen();
   }
 }

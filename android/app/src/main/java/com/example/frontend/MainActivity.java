@@ -15,7 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import io.flutter.embedding.android.FlutterFragmentActivity;
+import io.flutter.embedding.android.FlutterActivity;
 import io.flutter.embedding.engine.FlutterEngine;
 import io.flutter.plugin.common.MethodChannel;
 
@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class MainActivity extends FlutterFragmentActivity {
+public class MainActivity extends FlutterActivity {
     private static final String CHANNEL = "app.usage/access";
     private static final String SUMMARY_CHANNEL = "app.usage/summary";
     private static final int PERMISSION_REQUEST_CODE = 1001;
