@@ -55,7 +55,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             Text('동기부여 타입', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
             const SizedBox(height: 8),
             _MotivationTypeChooser(
-              value: UserSession.motivationType ?? MotivationType.emotional,
+              value: UserSession.motivationType ?? MotivationType.HABITUAL_WATCHER,
               onChanged: (v) => setState(() => UserSession.motivationType = v),
             ),
             const SizedBox(height: 24),

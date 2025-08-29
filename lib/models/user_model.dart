@@ -1,4 +1,5 @@
 import 'motivation.dart';
+import '../services/location_service.dart';
 
 class SignUpData {
   String email;
@@ -10,6 +11,10 @@ class SignUpData {
   String birthday; // "YYYY-MM-DD" 형식
   String gender;   // "MALE" 또는 "FEMALE"
   MotivationType? motivationType;
+  String? averagePreparationTime; // "HH:MM:SS" 형식
+  List<String> distractionAppList; // 유해앱 목록
+  LocationInfo? location; // 출발지 주소
+  bool useNotification; // 알림 사용 여부
 
   SignUpData({
     this.email = '',
@@ -21,6 +26,10 @@ class SignUpData {
     this.birthday = '',
     this.gender = '',
     this.motivationType,
+    this.averagePreparationTime,
+    this.distractionAppList = const [],
+    this.location,
+    this.useNotification = true,
   });
 
   // 서버로 보낼 JSON 형식으로 변환하는 메서드
@@ -28,12 +37,15 @@ class SignUpData {
     return {
       'email': email,
       'password': password,
-      'name': name,
       'nickname': nickname,
-      'phone': phone,
+      'job': name, // 백엔드에서는 'job' 필드로 매핑
       'birthday': birthday,
+      'averagePreparationTime': averagePreparationTime,
+      'distractionAppList': distractionAppList,
+      'location': location?.toJson(),
+      'useNotification': useNotification,
+      'motivationType': motivationType?.toString().split('.').last,
       'gender': gender,
-      'motivationType': motivationType?.toString().split('.').last.toUpperCase(),
     };
   }
 }

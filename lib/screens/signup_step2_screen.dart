@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'motivation_type_screen.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
+import '../widgets/location_search_widget.dart';
+import '../services/location_service.dart';
 
 class SignupStep2Screen extends StatefulWidget {
   const SignupStep2Screen({super.key});
@@ -29,6 +31,7 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen>
   // New state variables for gender and birthday
   String? _selectedGender;
   DateTime? _selectedBirthday;
+  LocationInfo? _selectedLocation; // 출발지 주소
 
   // 애니메이션 컨트롤러들
   late AnimationController _fadeController;
@@ -85,6 +88,44 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen>
     super.dispose();
   }
 
+  // 평균 외출 준비 시간을 백엔드 형식(HH:MM:SS)으로 변환
+  String? _convertPrepTimeToBackendFormat(String prepTime) {
+    if (prepTime.trim().isEmpty) return null;
+    
+    final timeText = prepTime.trim().toLowerCase();
+    
+    // "30분", "1시간", "1시간 30분" 등의 형식 파싱
+    int totalMinutes = 0;
+    
+    if (timeText.contains('시간')) {
+      final hourMatch = RegExp(r'(\d+)시간').firstMatch(timeText);
+      if (hourMatch != null) {
+        totalMinutes += int.parse(hourMatch.group(1)!) * 60;
+      }
+    }
+    
+    if (timeText.contains('분')) {
+      final minuteMatch = RegExp(r'(\d+)분').firstMatch(timeText);
+      if (minuteMatch != null) {
+        totalMinutes += int.parse(minuteMatch.group(1)!);
+      }
+    }
+    
+    if (totalMinutes == 0) return null;
+    
+    // HH:MM:SS 형식으로 변환
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:00';
+  }
+
+  // 출발지 주소 선택 처리
+  void _onLocationSelected(PlaceInfo place) {
+    setState(() {
+      _selectedLocation = place.toLocationInfo();
+    });
+  }
+
   Future<void> _callSignUpApi() async {
     // The previous logic to directly call the signup API is now split.
     // This button will now navigate to the next screen, passing the collected data.
@@ -102,6 +143,9 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen>
         return;
       }
 
+      // 평균 외출 준비 시간을 백엔드 형식으로 변환
+      final backendPrepTime = _convertPrepTimeToBackendFormat(_prepTimeController.text);
+
       // Create a SignUpData object with the collected info
       final signUpData = SignUpData(
         email: _emailController.text.trim(),
@@ -111,6 +155,10 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen>
         birthday: _selectedBirthday!.toIso8601String().split('T').first,
         gender: _selectedGender!,
         phone: '010-0000-0000', // Still a temporary value
+        averagePreparationTime: backendPrepTime,
+        location: _selectedLocation,
+        useNotification: true, // 기본값은 알림 허용
+        distractionAppList: [], // 기본값은 빈 리스트
       );
 
       // Navigate to the MotivationTypeScreen, passing the data
@@ -284,6 +332,76 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen>
                           controller: _prepTimeController,
                           prefixIcon: Icons.access_time,
                           validator: null,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // 출발지 주소 입력
+                        Text(
+                          '출발지 주소',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1A1A1A),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white24, width: 1.5),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (_selectedLocation != null) ...[
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      color: const Color(0xFFFF504A),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _selectedLocation!.placeName,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            _selectedLocation!.placeAddress,
+                                            style: TextStyle(
+                                              color: Colors.white60,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.close, color: Colors.white60),
+                                      onPressed: () {
+                                        setState(() {
+                                          _selectedLocation = null;
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ] else ...[
+                                LocationSearchWidget(
+                                  onLocationSelected: _onLocationSelected,
+                                  initialLocation: null,
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 32),
                       ],

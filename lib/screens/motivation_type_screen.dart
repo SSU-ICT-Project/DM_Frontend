@@ -113,38 +113,29 @@ class _MotivationTypeScreenState extends State<MotivationTypeScreen> {
 
               const SizedBox(height: 24),
               _TypeTile(
-                isSelected: _selectedType == MotivationType.emotional,
-                onTap: () => setState(() => _selectedType = MotivationType.emotional),
+                isSelected: _selectedType == MotivationType.HABITUAL_WATCHER,
+                onTap: () => setState(() => _selectedType = MotivationType.HABITUAL_WATCHER),
                 titleLines: const [
-                  '감성 자극형',
-                  '“지금 멈추면 당신은 분명 달라질 수 있어요.”',
+                  '습관적 시청형',
+                  '"지금 5분만 멈추면, 내일이 달라집니다."',
                 ],
               ),
               const SizedBox(height: 16),
               _TypeTile(
-                isSelected: _selectedType == MotivationType.futureVision,
-                onTap: () => setState(() => _selectedType = MotivationType.futureVision),
+                isSelected: _selectedType == MotivationType.COMFORT_SEEKER,
+                onTap: () => setState(() => _selectedType = MotivationType.COMFORT_SEEKER),
                 titleLines: const [
-                  '미래/비전 제시형',
-                  '“쇼츠를 끄는 지금, 미래의 당신이 웃고 있을 거예요.”',
+                  '위로 추구형',
+                  '"피곤할 땐 쉬어도 돼요. 하지만 진짜 회복은 목표에 다가설 때 옵니다."',
                 ],
               ),
               const SizedBox(height: 16),
               _TypeTile(
-                isSelected: _selectedType == MotivationType.action,
-                onTap: () => setState(() => _selectedType = MotivationType.action),
+                isSelected: _selectedType == MotivationType.THRILL_SEEKER,
+                onTap: () => setState(() => _selectedType = MotivationType.THRILL_SEEKER),
                 titleLines: const [
-                  '구체적 행동 제시형',
-                  '“지금 당장 쇼츠 끄고 책상에 앉아보세요.”',
-                ],
-              ),
-              const SizedBox(height: 16),
-              _TypeTile(
-                isSelected: _selectedType == MotivationType.competition,
-                onTap: () => setState(() => _selectedType = MotivationType.competition),
-                titleLines: const [
-                  '비교/경쟁 자극형',
-                  '“당신이 쇼츠 보는 동안, 누군가는 이미 한 단계 올라갔어요.”',
+                  '자극 추구형',
+                  '"쇼츠가 널 잡을까, 네가 이길까? 지금 선택해보세요."',
                 ],
               ),
 
@@ -196,14 +187,12 @@ class _MotivationTypeScreenState extends State<MotivationTypeScreen> {
 
   String _labelOf(MotivationType type) {
     switch (type) {
-      case MotivationType.emotional:
-        return '감성 자극형';
-      case MotivationType.futureVision:
-        return '미래/비전 제시형';
-      case MotivationType.action:
-        return '구체적 행동 제시형';
-      case MotivationType.competition:
-        return '비교/경쟁 자극형';
+      case MotivationType.HABITUAL_WATCHER:
+        return '습관적 시청형';
+      case MotivationType.COMFORT_SEEKER:
+        return '위로 추구형';
+      case MotivationType.THRILL_SEEKER:
+        return '자극 추구형';
     }
   }
 }
