@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/slide_page_route.dart';
@@ -18,9 +17,6 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
   final List<String> _permissionNames = [
     '알림',
     '위치',
-    '카메라',
-    '마이크',
-    '저장소',
   ];
 
   @override
@@ -35,22 +31,31 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
     });
 
     try {
-      // 필요한 권한들의 현재 상태 확인
+      // 기존 권한 상태 리스트 초기화
+      _permissionStatuses.clear();
+      
+      // 필요한 권한들의 현재 상태 확인 (카메라, 마이크, 저장소 제거)
       final permissions = [
         Permission.notification,
         Permission.location,
-        Permission.camera,
-        Permission.microphone,
-        Permission.storage,
       ];
 
-      for (final permission in permissions) {
+      print('권한 상태 확인 시작...');
+      
+      for (int i = 0; i < permissions.length; i++) {
+        final permission = permissions[i];
         final status = await permission.status;
         _permissionStatuses.add(status);
+        
+        print('${_permissionNames[i]} 권한 상태: $status');
       }
+
+      print('전체 권한 상태: $_permissionStatuses');
+      print('모든 권한 허용됨: $_allPermissionsGranted');
 
       // 모든 권한이 이미 허용된 경우 메인 화면으로 바로 이동
       if (_allPermissionsGranted) {
+        print('모든 권한이 허용되어 메인 화면으로 이동합니다.');
         // 권한 상태 저장
         await _savePermissionStatus();
         // 약간의 지연을 두어 로딩 상태를 보여줌
@@ -58,6 +63,8 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
         if (mounted) {
           _proceedToApp();
         }
+      } else {
+        print('일부 권한이 거부되었습니다. 사용자가 권한을 허용해야 합니다.');
       }
     } catch (e) {
       print('권한 상태 확인 중 오류: $e');
@@ -95,26 +102,22 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
         case 1:
           permission = Permission.location;
           break;
-        case 2:
-          permission = Permission.camera;
-          break;
-        case 3:
-          permission = Permission.microphone;
-          break;
-        case 4:
-          permission = Permission.storage;
-          break;
         default:
           return;
       }
 
+      print('${_permissionNames[index]} 권한 요청 시작...');
+      
       final status = await permission.request();
       setState(() {
         _permissionStatuses[index] = status;
       });
 
+      print('${_permissionNames[index]} 권한 요청 결과: $status');
+
       // 권한이 거부된 경우 설정으로 이동 안내
       if (status.isDenied || status.isPermanentlyDenied) {
+        print('${_permissionNames[index]} 권한이 거부되었습니다. 다이얼로그를 표시합니다.');
         if (mounted) {
           _showPermissionDeniedDialog(index);
         }
@@ -122,10 +125,13 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
 
       // 모든 권한이 허용된 경우 상태 저장 및 메인 화면으로 이동
       if (_allPermissionsGranted) {
+        print('모든 권한이 허용되어 메인 화면으로 이동합니다.');
         await _savePermissionStatus();
         if (mounted) {
           _proceedToApp();
         }
+      } else {
+        print('아직 일부 권한이 거부되었습니다. 현재 권한 상태: $_permissionStatuses');
       }
     } catch (e) {
       print('권한 요청 중 오류: $e');
@@ -141,26 +147,52 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           '$permissionName 권한 필요',
-          style: const TextStyle(color: Colors.white),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         content: Text(
           '$permissionName 권한이 거부되었습니다. 앱의 정상적인 작동을 위해 설정에서 권한을 허용해주세요.',
-          style: const TextStyle(color: Colors.white70),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Colors.white70,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white60,
+            ),
+            child: Text(
+              '취소',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
-          FilledButton(
+          ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               openAppSettings();
             },
-            child: const Text('설정으로 이동'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF6B6B),
+              foregroundColor: Colors.white,
+              elevation: 4,
+              shadowColor: const Color(0xFFFF6B6B).withOpacity(0.3),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(
+              '설정으로 이동',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -168,8 +200,18 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
   }
 
   bool get _allPermissionsGranted {
-    return _permissionStatuses.every((status) => 
+    if (_permissionStatuses.isEmpty) {
+      print('권한 상태 리스트가 비어있습니다.');
+      return false;
+    }
+    
+    final allGranted = _permissionStatuses.every((status) => 
         status.isGranted || status.isLimited);
+    
+    print('권한 상태 체크: $_permissionStatuses');
+    print('모든 권한 허용 여부: $allGranted');
+    
+    return allGranted;
   }
 
   void _proceedToApp() {
@@ -209,7 +251,7 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -217,81 +259,105 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
             children: [
               const SizedBox(height: 40),
               
-              // 앱 로고 및 제목
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF504A),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(
-                  Icons.phone_android,
-                  size: 40,
-                  color: Colors.white,
-                ),
+              // 헤더 섹션 (로그인 화면과 비슷한 스타일)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFFFF6B6B), Color(0xFFFF6B6B)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.security,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Digital Minimalism',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: const Color(0xFFFF6B6B),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    '권한 설정',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '앱의 정상적인 작동을 위해\n필요한 권한을 허용해주세요',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.white60,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
               ),
               
-              const SizedBox(height: 24),
-              
-              Text(
-                'DM Frontend',
-                style: GoogleFonts.inter(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              Text(
-                '앱의 정상적인 작동을 위해\n필요한 권한을 허용해주세요',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[400],
-                  height: 1.5,
-                ),
-              ),
-              
-              const SizedBox(height: 16),
+              const SizedBox(height: 32),
               
               // 앱 사용량 접근 권한 안내
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF504A).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFFF504A)),
+                  color: const Color(0xFFFF6B6B).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFFF6B6B).withOpacity(0.3), width: 1),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.info, color: Color(0xFFFF504A), size: 20),
-                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.info,
+                            color: Color(0xFFFF6B6B),
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
                         Text(
                           '앱 사용량 접근 권한',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFFFF504A),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFFFF6B6B),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Text(
                       '앱 사용량(스크린타임) 데이터 수집을 위해 시스템 설정에서 "사용 통계 액세스" 권한을 허용해야 합니다. 앱 시작 후 설정에서 수동으로 허용해주세요.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[300],
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.white70,
                         height: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
@@ -299,13 +365,19 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
                           // 시스템 설정으로 이동
                           openAppSettings();
                         },
-                        icon: const Icon(Icons.settings, color: Color(0xFFFF504A)),
-                        label: const Text(
+                        icon: const Icon(Icons.settings, color: Color(0xFFFF6B6B)),
+                        label: Text(
                           '권한 설정으로 이동',
-                          style: TextStyle(color: Color(0xFFFF504A)),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: const Color(0xFFFF6B6B),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFFFF504A)),
+                          foregroundColor: const Color(0xFFFF6B6B),
+                          side: BorderSide(color: const Color(0xFFFF6B6B).withOpacity(0.5)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
                     ),
@@ -313,14 +385,15 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
                 ),
               ),
               
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
               
               // 권한 목록
               Expanded(
                 child: _isLoading
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(
-                          color: Color(0xFFFF504A),
+                          color: const Color(0xFFFF6B6B),
+                          strokeWidth: 2.5,
                         ),
                       )
                     : ListView.builder(
@@ -333,21 +406,26 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
                           final status = _permissionStatuses[index];
                           final permissionName = _permissionNames[index];
                           
-                          return Card(
+                          return Container(
                             margin: const EdgeInsets.only(bottom: 12),
-                            color: Colors.grey[900],
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+                            ),
                             child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               leading: _getStatusIcon(status),
                               title: Text(
                                 permissionName,
-                                style: const TextStyle(
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                   color: Colors.white,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                               subtitle: Text(
                                 _getStatusText(status),
-                                style: TextStyle(
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                   color: _getStatusColor(status),
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -356,14 +434,24 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
                                   ? ElevatedButton(
                                       onPressed: () => _requestPermission(index),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFFFF504A),
+                                        backgroundColor: const Color(0xFFFF6B6B),
                                         foregroundColor: Colors.white,
+                                        elevation: 4,
+                                        shadowColor: const Color(0xFFFF6B6B).withOpacity(0.3),
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 16,
                                           vertical: 8,
                                         ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
                                       ),
-                                      child: const Text('권한 요청'),
+                                      child: Text(
+                                        '권한 요청',
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                     )
                                   : null,
                             ),
@@ -377,21 +465,25 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
               // 진행 버튼
               SizedBox(
                 width: double.infinity,
+                height: 56,
                 child: ElevatedButton(
                   onPressed: _allPermissionsGranted ? _proceedToApp : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _allPermissionsGranted 
-                        ? const Color(0xFFFF504A) 
-                        : Colors.grey[700],
+                        ? const Color(0xFFFF6B6B) 
+                        : Colors.white.withOpacity(0.1),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: _allPermissionsGranted ? 4 : 0,
+                    shadowColor: _allPermissionsGranted 
+                        ? const Color(0xFFFF6B6B).withOpacity(0.3) 
+                        : null,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                   child: Text(
                     _allPermissionsGranted ? '앱 시작하기' : '필요한 권한을 허용해주세요',
-                    style: GoogleFonts.inter(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -404,10 +496,12 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
               // 건너뛰기 버튼 (선택사항)
               TextButton(
                 onPressed: _proceedToApp,
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white60,
+                ),
                 child: Text(
                   '나중에 설정하기',
-                  style: TextStyle(
-                    color: Colors.grey[400],
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontSize: 14,
                   ),
                 ),

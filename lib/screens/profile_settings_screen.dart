@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../utils/slide_page_route.dart';
 import '../models/user_model.dart';
@@ -305,19 +304,38 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: Text('개인설정', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFFFF504A))),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        title: Text(
+          '개인설정',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            color: const Color(0xFFFF6B6B),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(
-                color: Color(0xFFFF504A),
+                color: Color(0xFFFF6B6B),
+                strokeWidth: 2.5,
               ),
             )
           : _memberDetail == null
@@ -325,134 +343,234 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        '회원 정보를 불러올 수 없습니다.',
-                        style: GoogleFonts.inter(fontSize: 16, color: Colors.white),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadMemberDetail,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF504A),
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                            width: 1,
+                          ),
                         ),
-                        child: Text(
-                          '다시 시도',
-                          style: GoogleFonts.inter(color: Colors.white),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Colors.white60,
+                              size: 48,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              '회원 정보를 불러올 수 없습니다.',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _loadMemberDetail,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFF6B6B),
+                                foregroundColor: Colors.white,
+                                elevation: 4,
+                                shadowColor: const Color(0xFFFF6B6B).withOpacity(0.3),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              child: Text(
+                                '다시 시도',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 )
               : SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+                  padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _LabeledField(
-                        label: '닉네임',
-                        controller: _nicknameController,
-                        hint: '닉네임을 입력하세요',
-                      ),
-                      const SizedBox(height: 16),
-                      _LabeledField(
-                        label: '직업',
-                        controller: _jobController,
-                        hint: '직업을 입력하세요',
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // 생년월일 입력 (수정 가능)
-                      Text('생년월일', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-                      const SizedBox(height: 8),
-                      Row(
+                      _ProfileSection(
+                        title: '기본 정보',
                         children: [
-                          Expanded(
-                            child: _LabeledField(
-                              label: '',
-                              controller: _birthYearController,
-                              hint: 'YYYY',
-                            ),
+                          _LabeledField(
+                            label: '닉네임',
+                            controller: _nicknameController,
+                            hint: '닉네임을 입력하세요',
+                            icon: Icons.person_outline,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _LabeledField(
-                              label: '',
-                              controller: _birthMonthController,
-                              hint: 'MM',
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _LabeledField(
-                              label: '',
-                              controller: _birthDayController,
-                              hint: 'DD',
-                            ),
+                          const SizedBox(height: 20),
+                          _LabeledField(
+                            label: '직업',
+                            controller: _jobController,
+                            hint: '직업을 입력하세요',
+                            icon: Icons.work_outline,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                       
-                      _LabeledField(
-                        label: '평균 외출 준비 시간',
-                        controller: _prepTimeController,
-                        hint: '예: 30분, 1시간',
+                      _ProfileSection(
+                        title: '생년월일',
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _BirthdayField(
+                                  controller: _birthYearController,
+                                  hint: 'YYYY',
+                                  label: '년',
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _BirthdayField(
+                                  controller: _birthMonthController,
+                                  hint: 'MM',
+                                  label: '월',
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _BirthdayField(
+                                  controller: _birthDayController,
+                                  hint: 'DD',
+                                  label: '일',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 24),
                       
-                      // 출발지 설정
-                      Text('출발지', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-                      const SizedBox(height: 8),
-                      LocationSearchWidget(
-                        onLocationSelected: _onLocationSelected,
-                        initialLocation: _selectedLocation != null 
-                            ? '${_selectedLocation!.name} (${_selectedLocation!.address})'
-                            : null,
+                      _ProfileSection(
+                        title: '시간 설정',
+                        children: [
+                          _LabeledField(
+                            label: '평균 외출 준비 시간',
+                            controller: _prepTimeController,
+                            hint: '예: 30분, 1시간',
+                            icon: Icons.access_time,
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 24),
                       
-                      Text(
-                        '동기부여 타입',
-                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
-                      ),
-                      const SizedBox(height: 8),
-                      _MotivationTypeChooser(
-                        value: UserSession.motivationType ?? _memberDetail!.motivationTypeEnum,
-                        onChanged: (v) {
-                          setState(() {
-                            UserSession.motivationType = v;
-                          });
-                        },
+                      _ProfileSection(
+                        title: '위치 설정',
+                        children: [
+                          LocationSearchWidget(
+                            onLocationSelected: _onLocationSelected,
+                            initialLocation: _selectedLocation != null 
+                                ? '${_selectedLocation!.name} (${_selectedLocation!.address})'
+                                : null,
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 24),
+                      
+                      _ProfileSection(
+                        title: '동기부여 타입',
+                        children: [
+                          _MotivationTypeChooser(
+                            value: UserSession.motivationType ?? _memberDetail!.motivationTypeEnum,
+                            onChanged: (v) {
+                              setState(() {
+                                UserSession.motivationType = v;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+                      
                       SizedBox(
                         width: double.infinity,
-                        height: 48,
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF504A),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        height: 56,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF6B6B),
+                            foregroundColor: Colors.white,
+                            elevation: 4,
+                            shadowColor: const Color(0xFFFF6B6B).withOpacity(0.3),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
                           onPressed: _isSaving ? null : _saveProfile,
                           child: _isSaving
                               ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
+                                  width: 24,
+                                  height: 24,
                                   child: CircularProgressIndicator(
                                     color: Colors.white,
-                                    strokeWidth: 2,
+                                    strokeWidth: 2.5,
                                   ),
                                 )
                               : Text(
                                   '저장',
-                                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
                                 ),
                         ),
                       ),
                     ],
                   ),
                 ),
-      bottomNavigationBar: const _SettingsBottomNav(),
+
+    );
+  }
+}
+
+class _ProfileSection extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+
+  const _ProfileSection({
+    required this.title,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          child: Column(children: children),
+        ),
+      ],
     );
   }
 }
@@ -461,11 +579,13 @@ class _LabeledField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final String hint;
+  final IconData icon;
 
   const _LabeledField({
     required this.label,
     required this.controller,
     required this.hint,
+    required this.icon,
   });
 
   @override
@@ -473,22 +593,55 @@ class _LabeledField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (label.isNotEmpty) ...[
-          Text(label, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-          const SizedBox(height: 8),
-        ],
+        Row(
+          children: [
+            Icon(
+              icon,
+              color: const Color(0xFFFF6B6B),
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
         Container(
-          height: 48,
-          decoration: BoxDecoration(color: const Color(0xFFD9D9D9), borderRadius: BorderRadius.circular(12)),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          height: 52,
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           alignment: Alignment.centerLeft,
           child: TextField(
             controller: controller,
-            decoration: InputDecoration.collapsed(
+            decoration: InputDecoration(
               hintText: hint,
-              hintStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w300, color: const Color(0xFF717171)),
+              hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.white60,
+                fontSize: 14,
+              ),
+              filled: false,
+              border: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
             ),
-            style: GoogleFonts.inter(fontSize: 14, color: Colors.black),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.white,
+              fontSize: 14,
+            ),
           ),
         ),
       ],
@@ -496,22 +649,71 @@ class _LabeledField extends StatelessWidget {
   }
 }
 
-class _SettingsBottomNav extends StatelessWidget {
-  const _SettingsBottomNav();
+class _BirthdayField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final String label;
+
+  const _BirthdayField({
+    required this.controller,
+    required this.hint,
+    required this.label,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return AppBottomNav(
-      currentIndex: 2,
-      onTap: (i) {
-        if (i == 2) return; // already on settings section
-        if (i == 0) {
-          Navigator.of(context).popUntil((route) => route.isFirst);
-        }
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Colors.white60,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 52,
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          alignment: Alignment.centerLeft,
+          child: TextField(
+            controller: controller,
+            textAlign: TextAlign.center,
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.white60,
+                fontSize: 14,
+              ),
+              filled: false,
+              border: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
+            ),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
+
+
 
 class _MotivationTypeChooser extends StatelessWidget {
   final MotivationType value;
@@ -521,18 +723,36 @@ class _MotivationTypeChooser extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (final t in MotivationType.values)
-          RadioListTile<MotivationType>(
-            value: t,
-            groupValue: value,
-            onChanged: (v) => v != null ? onChanged(v) : null,
-            title: Text(
-              motivationTypeLabel(t),
-              style: GoogleFonts.inter(color: Colors.white),
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: value == t 
+                  ? const Color(0xFFFF6B6B).withOpacity(0.15)
+                  : Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: value == t 
+                    ? const Color(0xFFFF6B6B).withOpacity(0.3)
+                    : Colors.white.withOpacity(0.1),
+                width: 1,
+              ),
             ),
-            activeColor: const Color(0xFFFF504A),
+            child: RadioListTile<MotivationType>(
+              value: t,
+              groupValue: value,
+              onChanged: (v) => v != null ? onChanged(v) : null,
+              title: Text(
+                motivationTypeLabel(t),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              activeColor: const Color(0xFFFF6B6B),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
           ),
       ],
     );

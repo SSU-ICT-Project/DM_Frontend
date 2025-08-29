@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 
@@ -107,14 +106,25 @@ class _NotificationScreenState extends State<NotificationScreen> {
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                const Text('모든 알림을 읽음 처리했습니다'),
+                Icon(
+                  Icons.check_circle,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '모든 알림을 읽음 처리했습니다',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
-            backgroundColor: const Color(0xFFFF504A),
+            backgroundColor: const Color(0xFFFF6B6B),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -142,25 +152,35 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0A0A0A),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         title: Text(
           '알림 목록',
-          style: GoogleFonts.inter(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            color: const Color(0xFFFF6B6B),
+            fontWeight: FontWeight.w700,
           ),
         ),
         centerTitle: true,
         actions: [
           if (_notifications.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.done_all, color: Colors.white70),
-              onPressed: _markAllAsRead,
-              tooltip: '모두 읽음 처리',
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                icon: Icon(
+                  Icons.done_all,
+                  color: const Color(0xFFFF6B6B),
+                  size: 20,
+                ),
+                onPressed: _markAllAsRead,
+                tooltip: '모두 읽음 처리',
+              ),
             ),
         ],
       ),
@@ -170,17 +190,36 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   Widget _buildBody() {
     if (_isLoading && _notifications.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(
-              color: Color(0xFFFF504A),
-            ),
-            SizedBox(height: 16),
-            Text(
-              '알림을 불러오는 중...',
-              style: TextStyle(color: Colors.white70, fontSize: 16),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                children: [
+                  const CircularProgressIndicator(
+                    color: Color(0xFFFF6B6B),
+                    strokeWidth: 2.5,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    '알림을 불러오는 중...',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -193,44 +232,67 @@ class _NotificationScreenState extends State<NotificationScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.red[300],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              '알림을 불러올 수 없습니다',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _errorMessage,
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => _loadNotifications(refresh: true),
-              icon: const Icon(Icons.refresh),
-              label: const Text('다시 시도'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF504A),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1,
                 ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: const Color(0xFFFF6B6B),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    '알림을 불러올 수 없습니다',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _errorMessage,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.white70,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () => _loadNotifications(refresh: true),
+                    icon: const Icon(Icons.refresh),
+                    label: Text(
+                      '다시 시도',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF6B6B),
+                      foregroundColor: Colors.white,
+                      elevation: 4,
+                      shadowColor: const Color(0xFFFF6B6B).withOpacity(0.3),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -246,32 +308,45 @@ class _NotificationScreenState extends State<NotificationScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.1),
-                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1,
+                ),
               ),
-              child: Icon(
-                Icons.notifications_none,
-                size: 64,
-                color: Colors.grey[400],
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.notifications_none,
+                      size: 48,
+                      color: Colors.white60,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    '알림이 없습니다',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '새로운 알림이 도착하면\n여기에 표시됩니다',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.white70,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              '알림이 없습니다',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '새로운 알림이 도착하면\n여기에 표시됩니다',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -280,12 +355,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     return RefreshIndicator(
       onRefresh: () => _loadNotifications(refresh: true),
-      color: const Color(0xFFFF504A),
-      backgroundColor: const Color(0xFF1A1A1A),
+      color: const Color(0xFFFF6B6B),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         itemCount: _notifications.length + (_notificationService.hasMoreData ? 1 : 0),
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
+        separatorBuilder: (context, index) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
           if (index == _notifications.length) {
             return _buildLoadMoreButton();
@@ -300,13 +375,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
     return Container(
       decoration: BoxDecoration(
         color: notification.isRead 
-            ? const Color(0xFF1A1A1A) 
-            : const Color(0xFF252525),
+            ? Colors.white.withOpacity(0.03)
+            : Colors.white.withOpacity(0.08),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: notification.isRead 
-              ? Colors.white.withOpacity(0.05)
-              : const Color(0xFFFF504A).withOpacity(0.3),
+              ? Colors.white.withOpacity(0.1)
+              : const Color(0xFFFF6B6B).withOpacity(0.3),
           width: 1,
         ),
         boxShadow: [
@@ -323,14 +398,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
           onTap: () => _markAsRead(notification),
           borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 알림 내용 (제목 없이 텍스트만)
                 Text(
                   notification.content,
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: notification.isRead 
                         ? Colors.white70 
                         : Colors.white,
@@ -341,31 +416,45 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         : FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 // 하단: 시간과 읽음 상태
                 Row(
                   children: [
-                    Icon(
-                      Icons.access_time,
-                      size: 14,
-                      color: Colors.white54,
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.access_time,
+                        size: 14,
+                        color: Colors.white60,
+                      ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 8),
                     Text(
                       _formatTimestamp(notification.createdAt),
-                      style: const TextStyle(
-                        color: Colors.white54,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.white60,
                         fontSize: 12,
                       ),
                     ),
                     const Spacer(),
                     if (!notification.isRead)
                       Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFFF504A),
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF6B6B),
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF6B6B).withOpacity(0.3),
+                              blurRadius: 4,
+                              spreadRadius: 1,
+                            ),
+                          ],
                         ),
                       ),
                   ],
@@ -386,19 +475,25 @@ class _NotificationScreenState extends State<NotificationScreen> {
       child: Center(
         child: _isLoading
             ? const CircularProgressIndicator(
-                color: Color(0xFFFF504A),
+                color: Color(0xFFFF6B6B),
+                strokeWidth: 2.5,
               )
             : ElevatedButton.icon(
                 onPressed: _loadNextPage,
                 icon: const Icon(Icons.expand_more),
-                label: const Text('더 보기'),
+                label: Text(
+                  '더 보기',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1A1A1A),
+                  backgroundColor: Colors.white.withOpacity(0.05),
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     side: BorderSide(color: Colors.white.withOpacity(0.2)),
                   ),
                 ),

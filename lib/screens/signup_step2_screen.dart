@@ -1,7 +1,6 @@
 // lib/screens/signup_step2_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'motivation_type_screen.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
@@ -15,8 +14,7 @@ class SignupStep2Screen extends StatefulWidget {
   State<SignupStep2Screen> createState() => _SignupStep2ScreenState();
 }
 
-class _SignupStep2ScreenState extends State<SignupStep2Screen>
-    with TickerProviderStateMixin {
+class _SignupStep2ScreenState extends State<SignupStep2Screen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
@@ -33,48 +31,6 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen>
   DateTime? _selectedBirthday;
   LocationInfo? _selectedLocation; // 출발지 주소
 
-  // 애니메이션 컨트롤러들
-  late AnimationController _fadeController;
-  late AnimationController _slideController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _initAnimations();
-  }
-
-  void _initAnimations() {
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
-      vsync: this,
-    );
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeInOut,
-    ));
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.2),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
-
-    _fadeController.forward();
-    _slideController.forward();
-  }
-
   @override
   void dispose() {
     _emailController.dispose();
@@ -83,8 +39,6 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen>
     _nicknameController.dispose();
     _jobController.dispose();
     _prepTimeController.dispose();
-    _fadeController.dispose();
-    _slideController.dispose();
     super.dispose();
   }
 
@@ -140,13 +94,35 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen>
     if (_formKey.currentState?.validate() ?? false) {
       if (_selectedGender == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('성별을 선택해 주세요.')),
+          SnackBar(
+            content: Text(
+              '성별을 선택해 주세요.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.white,
+              ),
+            ),
+            backgroundColor: const Color(0xFFFF6B6B),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            margin: const EdgeInsets.all(16),
+          ),
         );
         return;
       }
       if (_selectedBirthday == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('생년월일을 선택해 주세요.')),
+          SnackBar(
+            content: Text(
+              '생년월일을 선택해 주세요.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.white,
+              ),
+            ),
+            backgroundColor: const Color(0xFFFF6B6B),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            margin: const EdgeInsets.all(16),
+          ),
         );
         return;
       }
@@ -191,230 +167,231 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 헤더 섹션
-                FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Color(0xFFFF504A), Color(0xFFFF6B6B)],
-                              ),
-                              borderRadius: BorderRadius.circular(12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Color(0xFFFF6B6B), Color(0xFFFF6B6B)],
                             ),
-                            child: const Icon(
-                              Icons.person_add,
-                              color: Colors.white,
-                              size: 20,
-                            ),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Digital Minimalism',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: const Color(0xFFFF504A),
-                              fontWeight: FontWeight.w700,
-                            ),
+                          child: const Icon(
+                            Icons.person_add,
+                            color: Colors.white,
+                            size: 20,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        '회원가입 정보',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '디지털 미니멀리즘을 위한 첫 걸음을 시작해보세요',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.white60,
+                        const SizedBox(width: 12),
+                        Text(
+                          'Digital Minimalism',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: const Color(0xFFFF6B6B),
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      '회원가입 정보',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '디지털 미니멀리즘을 위한 첫 걸음을 시작해보세요',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.white60,
+                      ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 32),
 
                 // 폼 섹션
-                SlideTransition(
-                  position: _slideAnimation,
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Column(
-                      children: [
-                        // 기존 입력 필드들
-                        _ModernInputField(
-                          label: '이메일',
-                          hintText: 'example@email.com',
-                          controller: _emailController,
-                          prefixIcon: Icons.email_outlined,
-                          validator: (value) => (value == null || !value.contains('@')) ? '유효한 이메일을 입력해 주세요.' : null,
-                        ),
-                        const SizedBox(height: 20),
-                        _ModernInputField(
-                          label: '비밀번호',
-                          hintText: '8자 이상 입력해 주세요',
-                          controller: _passwordController,
-                          prefixIcon: Icons.lock_outlined,
-                          isObscure: _isPasswordObscure,
-                          onObscureToggle: () => setState(() => _isPasswordObscure = !_isPasswordObscure),
-                          validator: (value) {
-                            final text = value?.trim() ?? '';
-                            if (text.isEmpty) return '비밀번호를 입력해 주세요.';
-                            if (text.length < 8) return '비밀번호는 8자 이상이어야 합니다.';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                        _ModernInputField(
-                          label: '비밀번호 확인',
-                          hintText: '비밀번호를 다시 한 번 입력해 주세요',
-                          controller: _confirmPasswordController,
-                          prefixIcon: Icons.lock_outlined,
-                          isObscure: _isConfirmPasswordObscure,
-                          onObscureToggle: () => setState(() => _isConfirmPasswordObscure = !_isConfirmPasswordObscure),
-                          validator: (value) => (value != _passwordController.text.trim()) ? '비밀번호가 일치하지 않습니다.' : null,
-                        ),
-                        const SizedBox(height: 20),
-                        _ModernInputField(
-                          label: '닉네임',
-                          hintText: '사용자님을 어떻게 부를까요?',
-                          controller: _nicknameController,
-                          prefixIcon: Icons.person_outline,
-                          validator: (value) => (value == null || value.trim().isEmpty) ? '닉네임을 입력해 주세요.' : null,
-                        ),
-                        const SizedBox(height: 20),
-                        _ModernInputField(
-                          label: '직업',
-                          hintText: 'AI가 당신의 직업을 고려해 동기부여 해줍니다!',
-                          controller: _jobController,
-                          prefixIcon: Icons.work_outline,
-                          validator: (value) => (value == null || value.trim().isEmpty) ? '직업을 입력해 주세요.' : null,
-                        ),
-                        const SizedBox(height: 20),
+                Column(
+                  children: [
+                    // 기존 입력 필드들
+                    _ModernInputField(
+                      label: '이메일',
+                      hintText: 'example@email.com',
+                      controller: _emailController,
+                      prefixIcon: Icons.email_outlined,
+                      validator: (value) => (value == null || !value.contains('@')) ? '유효한 이메일을 입력해 주세요.' : null,
+                    ),
+                    const SizedBox(height: 20),
+                    _ModernInputField(
+                      label: '비밀번호',
+                      hintText: '8자 이상 입력해 주세요',
+                      controller: _passwordController,
+                      prefixIcon: Icons.lock_outlined,
+                      isObscure: _isPasswordObscure,
+                      onObscureToggle: () => setState(() => _isPasswordObscure = !_isPasswordObscure),
+                      validator: (value) {
+                        final text = value?.trim() ?? '';
+                        if (text.isEmpty) return '비밀번호를 입력해 주세요.';
+                        if (text.length < 8) return '비밀번호는 8자 이상이어야 합니다.';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    _ModernInputField(
+                      label: '비밀번호 확인',
+                      hintText: '비밀번호를 다시 한 번 입력해 주세요',
+                      controller: _confirmPasswordController,
+                      prefixIcon: Icons.lock_outlined,
+                      isObscure: _isConfirmPasswordObscure,
+                      onObscureToggle: () => setState(() => _isConfirmPasswordObscure = !_isConfirmPasswordObscure),
+                      validator: (value) => (value != _passwordController.text.trim()) ? '비밀번호가 일치하지 않습니다.' : null,
+                    ),
+                    const SizedBox(height: 20),
+                    _ModernInputField(
+                      label: '닉네임',
+                      hintText: '사용자님을 어떻게 부를까요?',
+                      controller: _nicknameController,
+                      prefixIcon: Icons.person_outline,
+                      validator: (value) => (value == null || value.trim().isEmpty) ? '닉네임을 입력해 주세요.' : null,
+                    ),
+                    const SizedBox(height: 20),
+                    _ModernInputField(
+                      label: '직업',
+                      hintText: 'AI가 당신의 직업을 고려해 동기부여 해줍니다!',
+                      controller: _jobController,
+                      prefixIcon: Icons.work_outline,
+                      validator: (value) => (value == null || value.trim().isEmpty) ? '직업을 입력해 주세요.' : null,
+                    ),
+                    const SizedBox(height: 20),
 
-                        // 성별 선택
-                        Text(
-                          '성별',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _ModernGenderSelection(
-                          selectedGender: _selectedGender,
-                          onChanged: (gender) => setState(() => _selectedGender = gender),
-                        ),
-                        const SizedBox(height: 20),
+                    // 성별 선택
+                    Text(
+                      '성별',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _ModernGenderSelection(
+                      selectedGender: _selectedGender,
+                      onChanged: (gender) => setState(() => _selectedGender = gender),
+                    ),
+                    const SizedBox(height: 20),
 
-                        // 생년월일 선택
-                        Text(
-                          '생년월일',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _ModernBirthdayPicker(
-                          selectedBirthday: _selectedBirthday,
-                          onChanged: (date) => setState(() => _selectedBirthday = date),
-                        ),
-                        const SizedBox(height: 20),
+                    // 생년월일 선택
+                    Text(
+                      '생년월일',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _ModernBirthdayPicker(
+                      selectedBirthday: _selectedBirthday,
+                      onChanged: (date) => setState(() => _selectedBirthday = date),
+                    ),
+                    const SizedBox(height: 20),
 
-                        _ModernInputField(
-                          label: '평균 외출 준비 시간',
-                          hintText: '예: 30분, 1시간 (선택 사항)',
-                          controller: _prepTimeController,
-                          prefixIcon: Icons.access_time,
-                          validator: null,
-                        ),
-                        const SizedBox(height: 20),
+                    _ModernInputField(
+                      label: '평균 외출 준비 시간',
+                      hintText: '예: 30분, 1시간 (선택 사항)',
+                      controller: _prepTimeController,
+                      prefixIcon: Icons.access_time,
+                      validator: null,
+                    ),
+                    const SizedBox(height: 20),
 
-                        // 출발지 주소 입력
-                        Text(
-                          '출발지 주소',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1A1A1A),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.white24, width: 1.5),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (_selectedLocation != null) ...[
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.location_on,
-                                      color: const Color(0xFFFF504A),
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            _selectedLocation!.placeName,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          Text(
-                                            _selectedLocation!.placeAddress,
-                                            style: TextStyle(
-                                              color: Colors.white60,
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.close, color: Colors.white60),
-                                      onPressed: () {
-                                        setState(() {
-                                          _selectedLocation = null;
-                                        });
-                                      },
-                                    ),
-                                  ],
+                    // 출발지 주소 입력
+                    Text(
+                      '출발지 주소',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_selectedLocation != null) ...[
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    Icons.location_on,
+                                    color: const Color(0xFFFF6B6B),
+                                    size: 18,
+                                  ),
                                 ),
-                              ] else ...[
-                                LocationSearchWidget(
-                                  onLocationSelected: _onLocationSelected,
-                                  initialLocation: null,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _selectedLocation!.placeName,
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Text(
+                                        _selectedLocation!.placeAddress,
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: Colors.white60,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.close,
+                                    color: Colors.white60,
+                                    size: 20,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _selectedLocation = null;
+                                    });
+                                  },
                                 ),
                               ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                      ],
+                            ),
+                          ] else ...[
+                            LocationSearchWidget(
+                              onLocationSelected: _onLocationSelected,
+                              initialLocation: null,
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 32),
+                  ],
                 ),
               ],
             ),
@@ -429,20 +406,22 @@ class _SignupStep2ScreenState extends State<SignupStep2Screen>
             width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF504A),
+                backgroundColor: const Color(0xFFFF6B6B),
                 foregroundColor: Colors.white,
-                elevation: 0,
+                elevation: 4,
+                shadowColor: const Color(0xFFFF6B6B).withOpacity(0.3),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               onPressed: _callSignUpApi,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     '다음',
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -537,18 +516,18 @@ class _ModernInputField extends StatelessWidget {
                     )
                   : null,
               filled: true,
-              fillColor: const Color(0xFF1A1A1A), // 입력 필드 배경색
+              fillColor: Colors.white.withOpacity(0.05), // 입력 필드 배경색
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: Colors.white24, width: 1.5),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: Colors.white24, width: 1.5),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: const Color(0xFFFF504A), width: 2),
+                borderSide: BorderSide(color: const Color(0xFFFF6B6B), width: 2),
               ),
             ),
           ),
@@ -616,13 +595,13 @@ class _ModernGenderButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
           color: isSelected 
-              ? const Color(0xFFFF504A).withOpacity(0.1)
+              ? const Color(0xFFFF6B6B).withOpacity(0.1)
               : Colors.transparent,
           border: Border.all(
             color: isSelected 
-                ? const Color(0xFFFF504A)
-                : Colors.white24,
-            width: isSelected ? 2 : 1.5,
+                ? const Color(0xFFFF6B6B)
+                : Colors.white.withOpacity(0.2),
+            width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(16),
         ),
@@ -630,7 +609,7 @@ class _ModernGenderButton extends StatelessWidget {
           label,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: isSelected ? const Color(0xFFFF504A) : Colors.white,
+            color: isSelected ? const Color(0xFFFF6B6B) : Colors.white,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -663,7 +642,7 @@ class _ModernBirthdayPicker extends StatelessWidget {
             return Theme(
               data: ThemeData.dark().copyWith(
                 colorScheme: const ColorScheme.dark(
-                  primary: Color(0xFFFF504A),
+                  primary: Color(0xFFFF6B6B),
                   onPrimary: Colors.white,
                   surface: Color(0xFF1A1A1A),
                   onSurface: Colors.white,
@@ -681,19 +660,24 @@ class _ModernBirthdayPicker extends StatelessWidget {
       child: Container(
         height: 56,
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A),
+          color: Colors.white.withOpacity(0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white24, width: 1.5),
+          border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            Icon(
-              Icons.calendar_today,
-              color: selectedBirthday != null 
-                  ? const Color(0xFFFF504A)
-                  : Colors.white60,
-              size: 20,
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.calendar_today,
+                color: const Color(0xFFFF6B6B),
+                size: 18,
+              ),
             ),
             const SizedBox(width: 12),
             Text(

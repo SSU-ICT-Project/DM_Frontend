@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../services/app_usage_service.dart';
 import '../services/usage_reporter.dart';
-import '../utils/slide_page_route.dart';
 
 class AppUsageSyncScreen extends StatefulWidget {
   const AppUsageSyncScreen({super.key});
@@ -151,65 +149,52 @@ class _AppUsageSyncScreenState extends State<AppUsageSyncScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
         title: Text(
           '앱 사용량 동기화',
-          style: GoogleFonts.inter(
-            fontSize: 25,
-            fontWeight: FontWeight.w500,
-            color: const Color(0xFFFF504A),
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            color: const Color(0xFFFF6B6B),
+            fontWeight: FontWeight.w700,
           ),
         ),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        elevation: 0,
+        leading: IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 설명 카드
-            Card(
-              color: Colors.grey[900],
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '앱 사용량 동기화',
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '기기의 앱 사용량(스크린타임) 데이터를 백엔드로 전송합니다. '
-                      '이 데이터는 디지털 웰빙 분석에 활용됩니다.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[400],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            _InfoCard(
+              icon: Icons.sync,
+              title: '앱 사용량 동기화',
+              description: '기기의 앱 사용량(스크린타임) 데이터를 백엔드로 전송합니다. 이 데이터는 디지털 웰빙 분석에 활용됩니다.',
             ),
             
             const SizedBox(height: 24),
             
             // 마지막 동기화 시간
-            Card(
-              color: Colors.grey[900],
-              child: ListTile(
-                leading: const Icon(Icons.access_time, color: Color(0xFFFF504A)),
-                title: const Text('마지막 동기화', style: TextStyle(color: Colors.white)),
-                subtitle: Text(_lastSyncTime, style: const TextStyle(color: Colors.grey)),
-              ),
+            _StatusCard(
+              icon: Icons.access_time,
+              title: '마지막 동기화',
+              value: _lastSyncTime,
             ),
             
             const SizedBox(height: 24),
@@ -217,14 +202,24 @@ class _AppUsageSyncScreenState extends State<AppUsageSyncScreen> {
             // 현재 사용량 확인 버튼
             SizedBox(
               width: double.infinity,
+              height: 56,
               child: ElevatedButton.icon(
                 onPressed: _checkCurrentUsage,
                 icon: const Icon(Icons.visibility),
-                label: const Text('현재 앱 사용량 확인'),
+                label: Text(
+                  '현재 앱 사용량 확인',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.grey[700],
+                  backgroundColor: Colors.white.withOpacity(0.05),
                   foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                  ),
                 ),
               ),
             ),
@@ -234,20 +229,30 @@ class _AppUsageSyncScreenState extends State<AppUsageSyncScreen> {
             // 동기화 버튼들
             SizedBox(
               width: double.infinity,
+              height: 56,
               child: ElevatedButton.icon(
                 onPressed: _isSyncing ? null : _syncTodayUsage,
                 icon: _isSyncing 
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                       )
                     : const Icon(Icons.sync),
-                label: Text(_isSyncing ? '동기화 중...' : '오늘 앱 사용량 동기화'),
+                label: Text(
+                  _isSyncing ? '동기화 중...' : '오늘 앱 사용량 동기화',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: const Color(0xFFFF504A),
+                  backgroundColor: const Color(0xFFFF6B6B),
                   foregroundColor: Colors.white,
+                  elevation: 4,
+                  shadowColor: const Color(0xFFFF6B6B).withOpacity(0.3),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
               ),
             ),
@@ -256,13 +261,22 @@ class _AppUsageSyncScreenState extends State<AppUsageSyncScreen> {
             
             SizedBox(
               width: double.infinity,
+              height: 56,
               child: OutlinedButton.icon(
                 onPressed: _isSyncing ? null : _syncYesterdayUsage,
-                icon: const Icon(Icons.history, color: Colors.white),
-                label: const Text('어제 앱 사용량 동기화', style: TextStyle(color: Colors.white)),
+                icon: const Icon(Icons.history),
+                label: Text(
+                  '어제 앱 사용량 동기화',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: const BorderSide(color: Colors.white),
+                  foregroundColor: Colors.white,
+                  side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
               ),
             ),
@@ -273,56 +287,74 @@ class _AppUsageSyncScreenState extends State<AppUsageSyncScreen> {
             if (_syncStatus.isNotEmpty)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: _syncStatus.contains('실패') 
-                      ? Colors.red[900]?.withOpacity(0.2) 
-                      : const Color(0xFFFF504A).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                      ? Colors.red.withOpacity(0.1)
+                      : const Color(0xFFFF6B6B).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: _syncStatus.contains('실패') 
-                        ? Colors.red[700]! 
-                        : const Color(0xFFFF504A),
+                        ? Colors.red.withOpacity(0.3)
+                        : const Color(0xFFFF6B6B).withOpacity(0.3),
+                    width: 1,
                   ),
                 ),
-                child: Text(
-                  _syncStatus,
-                  style: TextStyle(
-                    color: _syncStatus.contains('실패') 
-                        ? Colors.red[400] 
-                        : const Color(0xFFFF504A),
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
+                child: Row(
+                  children: [
+                    Icon(
+                      _syncStatus.contains('실패') ? Icons.error_outline : Icons.check_circle,
+                      color: _syncStatus.contains('실패') 
+                          ? Colors.red 
+                          : const Color(0xFFFF6B6B),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _syncStatus,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: _syncStatus.contains('실패') 
+                              ? Colors.red 
+                              : const Color(0xFFFF6B6B),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             
             // 디버그 로그 토글 버튼
             if (_debugLog.isNotEmpty) ...[
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _showDebugLog = !_showDebugLog;
-                        });
-                      },
-                      icon: Icon(
-                        _showDebugLog ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                        color: Colors.white,
-                      ),
-                      label: Text(
-                        _showDebugLog ? '로그 숨기기' : '상세 로그 보기',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.grey),
-                      ),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _showDebugLog = !_showDebugLog;
+                    });
+                  },
+                  icon: Icon(
+                    _showDebugLog ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    color: Colors.white,
+                  ),
+                  label: Text(
+                    _showDebugLog ? '로그 숨기기' : '상세 로그 보기',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ],
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
               ),
             ],
             
@@ -331,35 +363,55 @@ class _AppUsageSyncScreenState extends State<AppUsageSyncScreen> {
               const SizedBox(height: 16),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.grey[900],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[700]!),
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.bug_report, color: Color(0xFFFF504A), size: 20),
-                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.bug_report,
+                            color: const Color(0xFFFF6B6B),
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
                         Text(
                           '디버그 로그',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFFFF504A),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFFFF6B6B),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _debugLog,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontFamily: 'monospace',
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      ),
+                      child: Text(
+                        _debugLog,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.white70,
+                          fontFamily: 'monospace',
+                          height: 1.4,
+                        ),
                       ),
                     ),
                   ],
@@ -370,6 +422,137 @@ class _AppUsageSyncScreenState extends State<AppUsageSyncScreen> {
             const SizedBox(height: 24),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const _InfoCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: const Color(0xFFFF6B6B),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            description,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.white70,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+
+  const _StatusCard({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF6B6B).withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: const Color(0xFFFF6B6B),
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white60,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

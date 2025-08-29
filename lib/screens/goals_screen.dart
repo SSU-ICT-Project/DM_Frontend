@@ -424,32 +424,52 @@ class _GoalsScreenState extends State<GoalsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: Text('목표', style: GoogleFonts.inter(fontSize: 25, fontWeight: FontWeight.w500, color: const Color(0xFFFF504A))),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        title: Text(
+          '목표',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFFFF6B6B),
+          ),
+        ),
         actions: [
-          PopupMenuButton<GoalSortOption>(
-            icon: const Icon(Icons.sort, color: Colors.white),
-            color: Colors.grey[900],
-            onSelected: (v) {
-              _sortOption = v;
-              _applySort();
-            },
-            itemBuilder: (context) => [
-              _menuItem('마감일 순(가까운 순)', GoalSortOption.deadlineAsc),
-              _menuItem('마감일 순(먼 순)', GoalSortOption.deadlineDesc),
-              _menuItem('최신순', GoalSortOption.newest),
-              _menuItem('오래된순', GoalSortOption.oldest),
-              _menuItem('이름순', GoalSortOption.name),
-            ],
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: PopupMenuButton<GoalSortOption>(
+              icon: const Icon(Icons.sort, color: Colors.white, size: 20),
+              color: Colors.grey[900],
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              onSelected: (v) {
+                _sortOption = v;
+                _applySort();
+              },
+              itemBuilder: (context) => [
+                _menuItem('마감일 순(가까운 순)', GoalSortOption.deadlineAsc),
+                _menuItem('마감일 순(먼 순)', GoalSortOption.deadlineDesc),
+                _menuItem('최신순', GoalSortOption.newest),
+                _menuItem('오래된순', GoalSortOption.oldest),
+                _menuItem('이름순', GoalSortOption.name),
+              ],
+            ),
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFFF6B6B),
+                strokeWidth: 2.5,
+              ),
+            )
           : ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         itemCount: _goals.length + 2,
         itemBuilder: (context, index) {
           if (index == 0) {
@@ -527,12 +547,26 @@ class _GoalCard extends StatelessWidget {
       onLongPress: onLongPress,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: const [
-            BoxShadow(color: Colors.black26, blurRadius: 24, offset: Offset(0, 8)),
+          color: goal.isCompleted 
+              ? Colors.white.withOpacity(0.03) 
+              : Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: goal.isCompleted 
+                ? Colors.white.withOpacity(0.08) 
+                : const Color(0xFFFF6B6B).withOpacity(0.2),
+            width: goal.isCompleted ? 1 : 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: goal.isCompleted 
+                  ? Colors.black
+                  : const Color(0xFFFF6B6B).withOpacity(0.08),
+              blurRadius: goal.isCompleted ? 4 : 12,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Column(
@@ -544,55 +578,112 @@ class _GoalCard extends StatelessWidget {
                   value: goal.isCompleted,
                   onChanged: (v) => onToggleCompleted(v ?? false),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(
-                  child: Text(
-                    '$dDayLabel | ${goal.title}',
-                    style: TextStyle(
-                      decoration: goal.isCompleted ? TextDecoration.lineThrough : null,
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                                                     Container(
+                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                             decoration: BoxDecoration(
+                               color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                               borderRadius: BorderRadius.circular(8),
+                             ),
+                             child: Text(
+                               dDayLabel,
+                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                 color: const Color(0xFFFF6B6B),
+                                 fontWeight: FontWeight.w600,
+                                 fontSize: 10,
+                               ),
+                             ),
+                           ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              goal.title,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                decoration: goal.isCompleted ? TextDecoration.lineThrough : null,
+                                color: goal.isCompleted ? Colors.white60 : Colors.white,
+                                fontWeight: FontWeight.w600,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (goal.subGoals.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          '하위 목표 ${goal.subGoals.where((s) => s.isCompleted).length}/${goal.subGoals.length} 완료',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.white60,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 IconButton(
-                  icon: Icon(goal.isExpanded ? Icons.expand_less : Icons.expand_more, color: Colors.white),
+                  icon: Icon(
+                    goal.isExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: Colors.white70,
+                    size: 24,
+                  ),
                   onPressed: onToggleExpanded,
                 ),
               ],
             ),
-            if (goal.isExpanded) ...[
-              const SizedBox(height: 8),
-              for (final sub in goal.subGoals)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8, top: 6, bottom: 6),
-                  child: Row(
-                    children: [
-                      _SquareCheckbox(
-                        value: sub.isCompleted,
-                        onChanged: (v) => onToggleSubCompleted(sub.id, v ?? false),
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _subGoalDDayLabel(sub).isNotEmpty
-                              ? '${_subGoalDDayLabel(sub)} | ${sub.title}'
-                              : sub.title,
-                          style: _subGoalTextStyle(sub),
+                         if (goal.isExpanded) ...[
+               const SizedBox(height: 12),
+               Container(
+                 padding: const EdgeInsets.all(12),
+                 decoration: BoxDecoration(
+                   color: Colors.white.withOpacity(0.04),
+                   borderRadius: BorderRadius.circular(12),
+                   border: Border.all(color: Colors.white.withOpacity(0.08)),
+                 ),
+                child: Column(
+                  children: [
+                    for (final sub in goal.subGoals)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(
+                          children: [
+                            _SquareCheckbox(
+                              value: sub.isCompleted,
+                              onChanged: (v) => onToggleSubCompleted(sub.id, v ?? false),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _subGoalDDayLabel(sub).isNotEmpty
+                                    ? '${_subGoalDDayLabel(sub)} | ${sub.title}'
+                                    : sub.title,
+                                style: _subGoalTextStyle(sub),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              Padding(
-                padding: const EdgeInsets.only(left: 4, top: 4),
-                child: TextButton.icon(
-                  onPressed: onAddSubGoal,
-                  icon: const Icon(Icons.add, color: Colors.white70, size: 18),
-                  label: const Text('하위 목표 추가', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                  style: TextButton.styleFrom(foregroundColor: Colors.white70),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        onPressed: onAddSubGoal,
+                        icon: const Icon(Icons.add_circle_outline, color: Colors.white70, size: 18),
+                        label: const Text('하위 목표 추가', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white70,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -617,18 +708,37 @@ class _SquareCheckbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: value ? const Color(0xFFFF504A) : Colors.transparent,
-          border: Border.all(color: Colors.white, width: 2),
-          borderRadius: BorderRadius.circular(4),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        borderRadius: BorderRadius.circular(5),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: value ? const Color(0xFFFF6B6B) : Colors.transparent,
+            border: Border.all(
+              color: value ? const Color(0xFFFF6B6B) : Colors.white70,
+              width: 1.5,
+            ),
+            borderRadius: BorderRadius.circular(5),
+            boxShadow: value ? [
+              BoxShadow(
+                color: const Color(0xFFFF6B6B).withOpacity(0.25),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ] : null,
+          ),
+          child: value 
+              ? Icon(
+                  Icons.check,
+                  size: size * 0.65,
+                  color: Colors.white,
+                )
+              : null,
         ),
-        child: value ? const Icon(Icons.check, size: 16, color: Colors.white) : null,
       ),
     );
   }
@@ -641,21 +751,52 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 2, right: 2, top: 8, bottom: 8),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.15),
+          width: 1,
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(dateLabel, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  dateLabel,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFFFF6B6B),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           Center(
             child: Text(
-              message ?? '동기부여 메시지 불러오는 중... (연동 예정)',
+              message ?? '오늘도 한 걸음, 목표에 가까워지고 있어요.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.notoSans(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700, height: 1.3),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+                height: 1.3,
+              ),
             ),
           ),
-          const SizedBox(height: 12),
         ],
       ),
     );
@@ -668,23 +809,45 @@ class _AddMainGoalTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 12),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(12),
+            color: const Color(0xFFFF6B6B).withOpacity(0.08),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: const Color(0xFFFF6B6B).withOpacity(0.2),
+              width: 1.5,
+              style: BorderStyle.solid,
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Icon(Icons.add, color: Colors.white70),
-              SizedBox(width: 6),
-              Text('목표 추가', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.add,
+                  color: Color(0xFFFF6B6B),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '새로운 목표 추가하기',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: const Color(0xFFFF6B6B),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
