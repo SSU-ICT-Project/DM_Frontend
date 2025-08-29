@@ -371,11 +371,36 @@ class ApiService {
   // 유해앱 및 앱 사용량 API
   static Future<http.Response> sendHarmfulApps(HarmfulAppsModel harmfulApps) async {
     final url = Uri.parse('$baseUrl/harmful-apps');
-    return _sendRequest((headers) => http.post(
-      url,
-      headers: headers,
-      body: jsonEncode(harmfulApps.toJson()),
-    ));
+    print('🔍 sendHarmfulApps 시작');
+    print('🌐 요청 URL: $url');
+    print('📤 전송할 데이터: ${harmfulApps.toJson()}');
+    print('📤 JSON 변환: ${jsonEncode(harmfulApps.toJson())}');
+    
+    try {
+      final response = await _sendRequest((headers) async {
+        print('📤 요청 헤더: $headers');
+        print('📤 요청 본문: ${jsonEncode(harmfulApps.toJson())}');
+        
+        final httpResponse = await http.post(
+          url,
+          headers: headers,
+          body: jsonEncode(harmfulApps.toJson()),
+        );
+        
+        print('📡 응답 상태 코드: ${httpResponse.statusCode}');
+        print('📡 응답 헤더: ${httpResponse.headers}');
+        print('📡 응답 본문: ${httpResponse.body}');
+        
+        return httpResponse;
+      });
+      
+      print('✅ sendHarmfulApps 완료');
+      return response;
+    } catch (e, stackTrace) {
+      print('❌ sendHarmfulApps 오류: $e');
+      print('❌ 오류 스택: $stackTrace');
+      rethrow;
+    }
   }
 
   static Future<http.Response> getHarmfulApps() async {
@@ -569,38 +594,27 @@ class ApiService {
     }
   }
 
-  // 회원 정보 수정 API (multipart/form-data 형식)
+  // 회원 정보 수정 API (새로운 백엔드 API 스펙에 맞춤)
   static Future<bool> updateMemberDetail(MemberDetail memberDetail) async {
     final url = Uri.parse('$baseUrl/member');
     print('🔍 회원 정보 수정 시작: $url');
     
     try {
-      // _sendRequest를 통해 인증 토큰 포함하여 multipart/form-data 요청 전송
+      // _sendRequest를 통해 인증 토큰 포함하여 JSON 요청 전송
       final response = await _sendRequest((headers) async {
-        // multipart/form-data 요청 생성
-        final multipartRequest = http.MultipartRequest('PUT', url);
+        // JSON 요청 생성
+        final requestBody = jsonEncode(memberDetail.toUpdateJson());
         
-        // 헤더 설정
-        multipartRequest.headers.addAll(headers);
+        print('📤 전송할 JSON 데이터:');
+        print('   📋 Request Body: $requestBody');
         
-        // memberForm JSON 데이터를 fields로 추가
-        final memberFormJson = jsonEncode(memberDetail.toUpdateJson()['memberForm']);
-        multipartRequest.fields['memberForm'] = memberFormJson;
+        // PUT 요청 생성
+        final request = http.Request('PUT', url);
+        request.headers.addAll(headers);
+        request.headers['Content-Type'] = 'application/json';
+        request.body = requestBody;
         
-        // imageFile을 빈 파일로 추가 (0-byte file)
-        final emptyFile = http.MultipartFile.fromBytes(
-          'imageFile',
-          <int>[], // 빈 바이트 배열
-          filename: 'empty.txt',
-          // contentType 파라미터 제거하여 MediaType 타입 에러 해결
-        );
-        multipartRequest.files.add(emptyFile);
-        
-        print('📤 전송할 데이터 구조:');
-        print('   📋 memberForm: $memberFormJson');
-        print('   🖼️ imageFile: 빈 파일 (0-byte)');
-        
-        final streamedResponse = await multipartRequest.send();
+        final streamedResponse = await request.send();
         return await http.Response.fromStream(streamedResponse);
       });
       
@@ -618,6 +632,65 @@ class ApiService {
     } catch (e) {
       print('❌ 회원 정보 수정 중 오류 발생: $e');
       print('❌ 오류 타입: ${e.runtimeType}');
+      return false;
+    }
+  }
+
+  // 유해앱 설정 업데이트 (회원 정보를 통해서만)
+  static Future<bool> updateHarmfulApps(List<String> distractionApps) async {
+    print('🚀 updateHarmfulApps 시작');
+    print('📋 전송할 유해앱 목록: $distractionApps');
+    print('📋 유해앱 개수: ${distractionApps.length}개');
+    
+    try {
+      // 회원 정보 조회
+      print('🔍 회원 정보 조회 시작');
+      final memberDetail = await getMemberDetail();
+      if (memberDetail != null) {
+        print('📋 기존 회원 정보 조회 성공: ${memberDetail.nickname}');
+        print('📋 기존 유해앱 목록: ${memberDetail.distractionAppList}');
+        
+        // 회원 정보의 distractionAppList만 업데이트
+        final updatedMember = MemberDetail(
+          id: memberDetail.id,
+          name: memberDetail.name,
+          nickname: memberDetail.nickname,
+          job: memberDetail.job,
+          phone: memberDetail.phone,
+          email: memberDetail.email,
+          password: memberDetail.password,
+          motivationType: memberDetail.motivationType,
+          gender: memberDetail.gender,
+          birthday: memberDetail.birthday,
+          averagePreparationTime: memberDetail.averagePreparationTime,
+          distractionAppList: distractionApps,
+          location: memberDetail.location,
+          useNotification: memberDetail.useNotification,
+          state: memberDetail.state,
+          role: memberDetail.role,
+          profileImageUrl: memberDetail.profileImageUrl,
+          createdAt: memberDetail.createdAt,
+        );
+        
+        print('📋 업데이트할 회원 정보: ${updatedMember.toUpdateJson()}');
+        
+        final memberResponse = await updateMemberDetail(updatedMember);
+        if (memberResponse) {
+          print('✅ 회원 정보 업데이트 성공');
+          print('✅ 유해앱 설정 업데이트 완료');
+          return true;
+        } else {
+          print('❌ 회원 정보 업데이트 실패');
+          return false;
+        }
+      } else {
+        print('❌ 회원 정보 조회 실패');
+        return false;
+      }
+    } catch (e, stackTrace) {
+      print('❌ 유해앱 설정 업데이트 중 오류 발생: $e');
+      print('❌ 오류 타입: ${e.runtimeType}');
+      print('❌ 오류 스택: $stackTrace');
       return false;
     }
   }

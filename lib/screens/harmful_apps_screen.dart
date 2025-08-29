@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/usage_reporter.dart';
 import '../services/api_service.dart';
-import '../models/harmful_apps_model.dart';
 import '../utils/slide_page_route.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -19,6 +18,7 @@ class _HarmfulAppsScreenState extends State<HarmfulAppsScreen> {
   Set<String> _selectedHarmfulApps = {};
   bool _isLoading = true;
   String _searchQuery = '';
+  bool _isSaving = false; // 저장 중 표시를 위한 상태 변수
 
   @override
   void initState() {
@@ -82,53 +82,81 @@ class _HarmfulAppsScreenState extends State<HarmfulAppsScreen> {
   }
 
   Future<void> _sendToBackend() async {
+    print('🚀 _sendToBackend 시작');
+    print('📋 선택된 유해앱 패키지명: $_selectedHarmfulApps');
+    
+    setState(() {
+      _isSaving = true;
+    });
+
     try {
       // 선택된 유해앱들을 앱 이름으로 변환
       List<String> appNames = [];
+      print('🔍 앱 이름 변환 시작');
+      
       for (String packageName in _selectedHarmfulApps) {
+        print('🔍 패키지명 처리: $packageName');
         final app = _installedApps.firstWhere(
           (app) => app['packageName'] == packageName,
           orElse: () => {'appName': packageName},
         );
-        appNames.add(app['appName'] ?? packageName);
+        final appName = app['appName'] ?? packageName;
+        appNames.add(appName);
+        print('🔍 변환 결과: $packageName -> $appName');
       }
-
-      final harmfulApps = HarmfulAppsModel(
-        distractionAppList: appNames,
-      );
-
-      final response = await ApiService.sendHarmfulApps(harmfulApps);
       
-      if (response.statusCode == 200) {
-        print('백엔드로 유해앱 목록 전송 성공');
+      print('📋 최종 변환된 앱 이름 목록: $appNames');
+      print('📋 앱 이름 개수: ${appNames.length}개');
+
+      // 새로운 통합 API 메서드 사용
+      print('🔍 ApiService.updateHarmfulApps 호출 시작');
+      final success = await ApiService.updateHarmfulApps(appNames);
+      
+      if (success) {
+        print('✅ 유해앱 설정 업데이트 완료');
       } else {
-        print('백엔드로 유해앱 목록 전송 실패: ${response.statusCode}');
-        print('응답 내용: ${response.body}');
+        print('❌ 유해앱 설정 업데이트 실패');
+        throw Exception('유해앱 설정 업데이트 실패');
       }
-    } catch (e) {
-      print('백엔드 전송 중 오류 발생: $e');
+    } catch (e, stackTrace) {
+      print('❌ 백엔드 전송 중 오류 발생: $e');
+      print('❌ 오류 타입: ${e.runtimeType}');
+      print('❌ 오류 스택: $stackTrace');
+      rethrow;
+    } finally {
+      setState(() {
+        _isSaving = false;
+      });
+      print('🔄 _sendToBackend 완료');
     }
   }
 
   Future<void> _loadFromBackend() async {
     try {
-      final response = await ApiService.getHarmfulApps();
+      print('🔍 백엔드에서 유해앱 목록 로드 시작');
+      final memberDetail = await ApiService.getMemberDetail();
       
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final harmfulApps = HarmfulAppsModel.fromJson(data);
+      if (memberDetail != null) {
+        print('✅ 회원 정보 조회 성공: ${memberDetail.nickname}');
+        print('📋 백엔드 유해앱 목록: ${memberDetail.distractionAppList}');
         
         // 백엔드에서 받은 앱 이름들을 패키지명으로 변환
         Set<String> backendPackageNames = {};
-        for (String appName in harmfulApps.distractionAppList) {
+        for (String appName in memberDetail.distractionAppList) {
+          print('🔍 앱 이름 처리: $appName');
           final app = _installedApps.firstWhere(
             (app) => app['appName'] == appName,
             orElse: () => {'packageName': ''},
           );
           if (app['packageName']?.isNotEmpty == true) {
             backendPackageNames.add(app['packageName']!);
+            print('🔍 매칭된 패키지명: ${app['packageName']}');
+          } else {
+            print('⚠️ 매칭되지 않은 앱: $appName');
           }
         }
+        
+        print('📋 최종 매칭된 패키지명: $backendPackageNames');
         
         setState(() {
           _selectedHarmfulApps = backendPackageNames;
@@ -138,12 +166,13 @@ class _HarmfulAppsScreenState extends State<HarmfulAppsScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setStringList('harmfulApps', _selectedHarmfulApps.toList());
         
-        print('백엔드에서 유해앱 목록 로드 성공');
+        print('✅ 백엔드에서 유해앱 목록 로드 성공');
       } else {
-        print('백엔드에서 유해앱 목록 로드 실패: ${response.statusCode}');
+        print('❌ 회원 정보 조회 실패');
       }
-    } catch (e) {
-      print('백엔드 로드 중 오류 발생: $e');
+    } catch (e, stackTrace) {
+      print('❌ 백엔드 로드 중 오류 발생: $e');
+      print('❌ 오류 스택: $stackTrace');
     }
   }
 
@@ -187,13 +216,25 @@ class _HarmfulAppsScreenState extends State<HarmfulAppsScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          if (_isSaving)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Color(0xFFFF504A),
+                  strokeWidth: 2,
+                ),
+              ),
+            ),
           IconButton(
-            onPressed: _sendToBackend,
+            onPressed: _isSaving ? null : _sendToBackend,
             icon: const Icon(Icons.sync, color: Colors.white),
             tooltip: '백엔드로 동기화',
           ),
           TextButton(
-            onPressed: _selectedHarmfulApps.isEmpty ? null : () {
+            onPressed: _isSaving || _selectedHarmfulApps.isEmpty ? null : () {
               setState(() {
                 _selectedHarmfulApps.clear();
               });
@@ -202,7 +243,7 @@ class _HarmfulAppsScreenState extends State<HarmfulAppsScreen> {
             child: Text(
               '전체 해제',
               style: TextStyle(
-                color: _selectedHarmfulApps.isEmpty ? Colors.grey : const Color(0xFFFF504A),
+                color: (_isSaving || _selectedHarmfulApps.isEmpty) ? Colors.grey : const Color(0xFFFF504A),
               ),
             ),
           ),

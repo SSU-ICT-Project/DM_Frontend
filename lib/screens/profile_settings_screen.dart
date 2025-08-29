@@ -270,9 +270,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
       final requestJson = updatedMember.toUpdateJson();
       print('🔍 전송할 JSON 구조:');
-      print('   📋 memberForm: ${requestJson['memberForm']}');
-      print('   🖼️ imageFile: ${requestJson['imageFile']}');
-      print('   🔍 이미지 사용하지 않는 서비스: imageFile은 항상 빈 문자열로 전송');
+      print('   📋 Request Body: $requestJson');
+      print('   🔍 새로운 백엔드 API: JSON 형식으로 전송');
 
       final success = await ApiService.updateMemberDetail(updatedMember);
       

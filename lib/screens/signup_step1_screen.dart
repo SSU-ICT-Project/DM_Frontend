@@ -250,36 +250,11 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen>
             children: [
               const SizedBox(height: 80),
               
-              // 로고 및 타이틀 섹션
+              // 타이틀 섹션 (로고 제거)
               FadeTransition(
                 opacity: _fadeAnimation,
                 child: Column(
                   children: [
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0xFFFF504A), Color(0xFFFF6B6B)],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFFF504A).withOpacity(0.3),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.phone_android,
-                        size: 40,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
                     Text(
                       'Digital Minimalism',
                       style: Theme.of(context).textTheme.headlineLarge?.copyWith(
@@ -449,22 +424,22 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen>
                       // 카카오 로그인 버튼
                       SizedBox(
                         width: double.infinity,
-                        height: 50,
+                        height: 56,
                         child: OutlinedButton.icon(
                           onPressed: () => _onKakaoSignIn(),
                           icon: Container(
-                            width: 24,
-                            height: 24,
+                            width: 28,
+                            height: 28,
                             decoration: BoxDecoration(
                               color: const Color(0xFFFEE500),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Center(
                               child: Text(
                                 'K',
                                 style: TextStyle(
                                   color: Color(0xFF000000),
-                                  fontSize: 16,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -485,22 +460,22 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen>
                       // 네이버 로그인 버튼
                       SizedBox(
                         width: double.infinity,
-                        height: 50,
+                        height: 56,
                         child: OutlinedButton.icon(
                           onPressed: () => _onNaverSignIn(),
                           icon: Container(
-                            width: 24,
-                            height: 24,
+                            width: 28,
+                            height: 28,
                             decoration: BoxDecoration(
                               color: const Color(0xFF03C75A),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Center(
                               child: Text(
                                 'N',
                                 style: TextStyle(
-                                  color: Color(0xFF03C75A),
-                                  fontSize: 16,
+                                  color: Color(0xFFFFFFFF),
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -516,15 +491,7 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen>
                         ),
                       ),
 
-                      const SizedBox(height: 16),
-                      Text(
-                        '구글 캘린더 연동을 위해 구글 간편 로그인을 추천드립니다.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.white54,
-                          fontSize: 12,
-                        ),
-                      ),
+
                     ],
                   ),
                 ),

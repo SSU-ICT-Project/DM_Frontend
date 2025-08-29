@@ -123,28 +123,25 @@ class MemberDetail {
     );
   }
 
-  // 회원 정보 수정을 위한 JSON 변환 메서드 (multipart/form-data 형식에 최적화)
+  // 회원 정보 수정을 위한 JSON 변환 메서드 (새로운 백엔드 API 스펙에 맞춤)
   Map<String, dynamic> toUpdateJson() {
     return {
-      'memberForm': {
-        'nickname': nickname,
-        'job': job.isNotEmpty ? job : null, // null로 전송하여 백엔드에서 처리
-        'email': email,
-        'password': password.isNotEmpty ? password : null, // null로 전송하여 백엔드에서 처리
-        'birthday': birthday.isNotEmpty ? birthday : null, // LocalDate 형식으로 전송
-        'averagePreparationTime': averagePreparationTime.isNotEmpty ? averagePreparationTime : null, // LocalTime 형식으로 전송
-        'distractionAppList': distractionAppList,
-        'location': location != null ? {
-          'placeName': location!.placeName,
-          'placeAddress': location!.placeAddress,
-          'latitude': location!.latitude,
-          'longitude': location!.longitude,
-        } : null,
-        'useNotification': useNotification,
-        'motivationType': motivationType,
-        'gender': gender.isNotEmpty ? gender : null, // null로 전송하여 백엔드에서 처리
-      },
-      // imageFile은 multipart/form-data에서 별도로 처리
+      'nickname': nickname,
+      'job': job.isNotEmpty ? job : null,
+      'email': email,
+      'password': password.isNotEmpty ? password : null,
+      'birthday': birthday.isNotEmpty ? birthday : null,
+      'averagePreparationTime': averagePreparationTime.isNotEmpty ? averagePreparationTime : null,
+      'distractionAppList': distractionAppList,
+      'location': location != null ? {
+        'placeName': location!.placeName,
+        'placeAddress': location!.placeAddress,
+        'latitude': location!.latitude,
+        'longitude': location!.longitude,
+      } : null,
+      'useNotification': useNotification,
+      'motivationType': motivationType,
+      'gender': gender.isNotEmpty ? gender : null,
     };
   }
 
