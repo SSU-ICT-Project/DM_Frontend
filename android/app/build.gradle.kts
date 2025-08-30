@@ -1,18 +1,29 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
+}
+
+// 환경 변수 로드
+val properties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    properties.load(localPropertiesFile.inputStream())
 }
 
 android {
     namespace = "com.example.frontend"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -21,13 +32,36 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.frontend"
+        applicationId = "com.dm.dm_bakend"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // 환경 변수에서 API 키 가져오기
+        val googleMapsApiKey = properties.getProperty("GOOGLE_MAPS_API_KEY") ?: ""
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
+        
+        // 소셜 로그인 설정
+        val kakaoKey = properties.getProperty("KAKAO_NATIVE_APP_KEY")
+        val naverClientId = properties.getProperty("NAVER_CLIENT_ID")
+        val naverClientSecret = properties.getProperty("NAVER_CLIENT_SECRET")
+        
+        if (kakaoKey.isNullOrEmpty()) {
+            throw GradleException("KAKAO_NATIVE_APP_KEY가 local.properties에 설정되지 않았습니다.")
+        }
+        if (naverClientId.isNullOrEmpty()) {
+            throw GradleException("NAVER_CLIENT_ID가 local.properties에 설정되지 않았습니다.")
+        }
+        if (naverClientSecret.isNullOrEmpty()) {
+            throw GradleException("NAVER_CLIENT_SECRET이 local.properties에 설정되지 않았습니다.")
+        }
+        
+        manifestPlaceholders["KAKAO_NATIVE_APP_KEY"] = kakaoKey
+        manifestPlaceholders["NAVER_CLIENT_ID"] = naverClientId
+        manifestPlaceholders["NAVER_CLIENT_SECRET"] = naverClientSecret
     }
 
     buildTypes {
@@ -41,4 +75,8 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

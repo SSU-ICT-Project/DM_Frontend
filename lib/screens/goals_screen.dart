@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/signup_step1_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'settings_screen.dart';
 import 'calendar_screen.dart';
 import '../utils/slide_page_route.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../models/goal_model.dart';
+import '../services/api_service.dart';
+import 'dart:convert';
+import 'dart:io';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -17,105 +22,312 @@ class _GoalsScreenState extends State<GoalsScreen> {
   final List<Goal> _goals = [];
   GoalSortOption _sortOption = GoalSortOption.deadlineAsc;
   String? _motivationMessage;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // 데모 데이터
-    _goals.addAll([
-      Goal(
-        id: 'g1',
-        title: '토익 950점 달성',
-        createdAt: DateTime.now().subtract(const Duration(days: 8)),
-        deadline: DateTime.now().add(const Duration(days: 30)),
-        subGoals: [
-          // 하위 데이터 deadline 추가
-          SubGoal(id: 's1', title: '영단어 100개 암기', createdAt: DateTime(2025, 1, 1),deadline: DateTime.now().add(const Duration(days: 1))),
-          SubGoal(id: 's2', title: '리스닝 3회차', createdAt: DateTime(2025, 1, 2), deadline: DateTime.now().add(const Duration(days: 3))),
-        ],
-      ),
-      Goal(
-        id: 'g2',
-        title: 'API 명세서 작성',
-        createdAt: DateTime.now().subtract(const Duration(days: 3)),
-        deadline: DateTime.now().add(const Duration(days: 7)),
-      ),
-      Goal(
-        id: 'g3',
-        title: '피그마 레이아웃 마감 *****',
-        createdAt: DateTime.now().subtract(const Duration(days: 10)),
-        deadline: DateTime.now().add(const Duration(days: 2)),
-      ),
-    ]);
-    _applySort();
+    _loadGoals();
     _loadMotivationMessage();
   }
 
-  void _loadMotivationMessage() async {
-    // TODO: 백엔드 연동 시 실제 메시지로 교체
+  // 메인 목표 목록을 API에서 불러오는 메서드
+  Future<void> _loadGoals() async {
     setState(() {
-      _motivationMessage = '오늘도 한 걸음, 목표에 가까워지고 있어요.';
+      _isLoading = true;
     });
+    try {
+      print('목표 목록 GET 요청 시작...');
+      final response = await ApiService.getMainGoals(page: 0, size: 20);
+
+      print(' 목표 목록 GET 응답 상태 코드: ${response.statusCode}');
+      print(' 목표 목록 GET 응답 본문: ${utf8.decode(response.bodyBytes)}');
+
+      if (response.statusCode == 200) {
+        try {
+          final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
+          print(' JSON 파싱 성공!');
+
+          //  'mainGoalPage'를 'dmPage'로 수정하고, 데이터 구조에 맞게 접근합니다.
+          final dmPage = responseBody['dmPage'];
+          if (dmPage != null && dmPage.containsKey('contents')) {
+            final List<dynamic> data = dmPage['contents'] ?? [];
+
+            //  contents 안의 각 항목이 {"mainGoal": {}, "subGoals": []} 구조이므로, 'mainGoal'을 추출해야 합니다.
+            final List<dynamic> mainGoalItems = data.map((item) => item['mainGoal']).where((item) => item != null).toList();
+
+            print(' "dmPage"와 "contents" 필드 확인됨. 목표 목록 크기: ${mainGoalItems.length}');
+
+            setState(() {
+              _goals.clear();
+              //  data 전체를 Goal.fromJson으로 전달
+              _goals.addAll(data.map((item) => Goal.fromJson(item as Map<String, dynamic>)).toList());
+
+
+              print(' goals 리스트 상태 확인:');
+              _goals.forEach((goal) {
+                print('  - 제목: ${goal.title}, D-Day: ${goal.dDay}, 하위 목표 수: ${goal.subGoals.length}');
+              });
+              _applySort();
+            });
+            print(' 목표 목록 업데이트 완료!');
+          } else {
+            print(' "dmPage" 또는 "contents" 필드가 응답에 없습니다.');
+            setState(() => _goals.clear());
+          }
+        } catch (e) {
+          print(' JSON 파싱 중 오류 발생: $e');
+          setState(() => _goals.clear());
+        }
+      } else {
+        //  401 Unauthorized 등 실패 로직
+        print(' 목표 목록 로드 실패: ${response.statusCode}');
+
+        //  여기에 로그아웃 로직 추가
+        if (response.statusCode == 401) {
+          // 1. SharedPreferences에서 토큰 삭제
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('accessToken');
+          await prefs.remove('refreshToken');
+
+          // 2. 로그인 화면으로 이동 및 이전 화면 스택 제거
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => SignupStep1Screen()), // LoginScreen으로 변경 필요
+                (Route<dynamic> route) => false,
+          );
+        } else {
+          // 다른 실패 상태 코드에 대한 처리
+          setState(() => _goals.clear());
+        }
+      }
+    } catch (e) {
+      print(' 네트워크 오류 발생: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('네트워크 오류가 발생했습니다.')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
-  void _toggleGoalCompleted(String goalId, bool completed) {
-    setState(() {
-      final index = _goals.indexWhere((g) => g.id == goalId);
-      if (index == -1) return;
-      var goal = _goals[index].copyWith(isCompleted: completed);
+  // 메인 목표 추가
+  // goals_screen.dart 파일의 _addGoal 메서드 수정
+  void _addGoal() async {
+    final result = await showDialog<_GoalDraft>(
+      context: context,
+      builder: (context) => const _AddGoalDialog(),
+    );
 
-      // 본 목표 체크 시 하위 목표까지 체크
-      final updatedSubs = goal.subGoals
-          .map((s) => s.copyWith(isCompleted: completed))
-          .toList(growable: false);
-      goal = goal.copyWith(subGoals: updatedSubs);
+    if (result == null || result.title.trim().isEmpty) return;
 
-      _goals[index] = goal;
-    });
-    _applySort();
+    final newGoalData = {
+      'content': result.title.trim(),
+      'deadline': result.deadline?.toIso8601String(),
+      'checked': false,
+    };
+
+    try {
+      print('목표 추가 요청 시작...');
+      print('요청 본문: ${jsonEncode(newGoalData)}');
+
+      final response = await ApiService.createMainGoal(newGoalData);
+
+      print('HTTP 응답 상태 코드: ${response.statusCode}');
+      print('HTTP 응답 본문: ${utf8.decode(response.bodyBytes)}');
+
+      if (response.statusCode == 200) {
+        //  목표 생성에 성공했으므로, 목표 목록을 다시 불러옵니다.
+        await _loadGoals();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('새 목표가 성공적으로 추가되었습니다.')),
+        );
+      } else {
+        final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
+        final errorMessage = responseBody['message'] ?? '목표 추가에 실패했습니다. (코드: ${response.statusCode})';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
+    } catch (e) {
+      print(' 목표 추가 중 오류 발생: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('네트워크 오류가 발생했습니다.')),
+      );
+    }
   }
 
-  void _toggleSubGoalCompleted(String goalId, String subId, bool completed) {
-    setState(() {
-      final index = _goals.indexWhere((g) => g.id == goalId);
-      if (index == -1) return;
-      final goal = _goals[index];
-      // 상태 업데이트
-      final updated = goal.subGoals
-          .map((s) => s.id == subId ? s.copyWith(isCompleted: completed) : s)
-          .toList(growable: false);
-      // 정렬: 미완료 먼저, 완료는 하단으로(기존 상대적 순서 유지)
-      final incompletes = updated.where((s) => !s.isCompleted).toList(growable: false);
-      final completes = updated.where((s) => s.isCompleted).toList(growable: false);
-      final reordered = <SubGoal>[...incompletes, ...completes];
-      _goals[index] = goal.copyWith(subGoals: reordered);
-    });
+  // 메인 목표 수정
+  Future<void> _editGoal(int goalId) async {
+    final index = _goals.indexWhere((g) => g.id == goalId);
+    if (index == -1) return;
+    final goal = _goals[index];
+    final result = await showDialog<_GoalEditResult>(
+      context: context,
+      builder: (context) => _EditGoalDialog(
+        initialTitle: goal.title,
+        initialDeadline: goal.computedDeadline,
+        initialSubGoals: goal.subGoals,
+        mainGoalId: goal.id,
+      ),
+    );
+    if (result == null) return;
+
+    final updatedMainGoalData = {
+      'content': result.title,
+      'deadline': result.deadline?.toIso8601String(),
+    };
+
+    try {
+      final response = await ApiService.updateMainGoal(goalId.toString(), updatedMainGoalData);
+      if (response.statusCode == 200) {
+        await _loadGoals();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('목표 수정 실패: (코드: ${response.statusCode})')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('네트워크 오류가 발생했습니다.')),
+      );
+    }
   }
 
-  Future<void> _addSubGoal(String goalId) async {
-    // Map<String, dynamic> 타입으로 결과 받기
+  // 메인 목표 삭제
+  void _deleteGoal(int goalId) async {
+    try {
+      final response = await ApiService.deleteMainGoal(goalId.toString());
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _goals.removeWhere((g) => g.id == goalId);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('목표가 삭제되었습니다.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('목표 삭제에 실패했습니다. (코드: ${response.statusCode})')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('네트워크 오류가 발생했습니다.')),
+      );
+    }
+  }
+
+  // 메인 목표 완료 토글 메서드 수정
+  void _toggleGoalCompleted(int goalId, bool completed) async {
+    final goal = _goals.firstWhere((g) => g.id == goalId);
+    final updatedGoalData = {
+      'checked': completed,
+      'title': goal.title,     //  기존 제목을 함께 보냅니다.
+      'dday': goal.dDay,       //  기존 디데이도 함께 보냅니다.
+    };
+
+    //  디버깅 코드 추가: 백엔드로 보내는 데이터를 출력합니다.
+    print(' 백엔드에 전송될 데이터: $updatedGoalData');
+
+    try {
+      //  디버깅 코드 추가: API 요청 시작을 알립니다.
+      print(' 목표 상태 업데이트 PUT 요청 시작...');
+      final response = await ApiService.updateMainGoal(goalId.toString(), updatedGoalData);
+      //  디버깅 코드 추가: 백엔드 응답을 출력합니다.
+      print(' 목표 상태 업데이트 PUT 응답 상태 코드: ${response.statusCode}');
+      print(' 목표 상태 업데이트 PUT 응답 본문: ${utf8.decode(response.bodyBytes)}');
+
+      if (response.statusCode == 200) {
+        //  목표 목록을 다시 불러오는 대신, 로컬 리스트만 업데이트합니다.
+        setState(() {
+          final index = _goals.indexWhere((g) => g.id == goalId);
+          if (index != -1) {
+            // `copyWith` 메서드를 사용하여 해당 목표의 완료 상태만 변경
+            _goals[index] = _goals[index].copyWith(isCompleted: completed);
+
+            // 완료된 목표를 리스트 맨 아래로 정렬하여 시각적으로 구분
+            _applySort();
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(completed ? '목표가 완료되었습니다!' : '목표 완료가 취소되었습니다.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('상태 업데이트 실패: (코드: ${response.statusCode})')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('네트워크 오류가 발생했습니다.')),
+      );
+    }
+  }
+
+  // 하위 목표 완료 토글 메서드 수정
+  void _toggleSubGoalCompleted(int subId, bool completed) async {
+    final updatedSubGoalData = {
+      'checked': completed,
+    };
+
+    try {
+      final response = await ApiService.updateSubGoal(subId.toString(), updatedSubGoalData);
+      if (response.statusCode == 200) {
+        setState(() {
+          //  로컬 리스트에서 하위 목표만 찾아 상태 변경
+          final mainGoalIndex = _goals.indexWhere((g) => g.subGoals.any((s) => s.id == subId));
+          if (mainGoalIndex != -1) {
+            final subGoals = _goals[mainGoalIndex].subGoals.map((s) => s.id == subId ? s.copyWith(isCompleted: completed) : s).toList();
+            _goals[mainGoalIndex] = _goals[mainGoalIndex].copyWith(subGoals: subGoals);
+          }
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('하위 목표 상태 업데이트 실패: (코드: ${response.statusCode})')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('네트워크 오류가 발생했습니다.')),
+      );
+    }
+  }
+
+  // 하위 목표 추가 메서드 수정
+  Future<void> _addSubGoal(int mainGoalId) async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => const _AddSubGoalDialog(),
     );
     if (result == null || result['title'].trim().isEmpty) return;
 
-    setState(() {
-      final index = _goals.indexWhere((g) => g.id == goalId);
-      if (index == -1) return;
-      final goal = _goals[index];
-      final updatedSubs = List<SubGoal>.from(goal.subGoals)
-        ..add(SubGoal(
-          id: UniqueKey().toString(),
-          title: result['title'].trim(),
-          createdAt: DateTime.now(),
-          deadline: result['deadline'], // deadline 전달
-        ));
-      _goals[index] = goal.copyWith(subGoals: updatedSubs);
-    });
+    final newSubGoalData = {
+      'mainGoalId': mainGoalId,
+      'content': result['title'].trim(),
+      'deadline': result['deadline']?.toIso8601String(),
+      'checked': false,
+    };
+
+    try {
+      final response = await ApiService.createSubGoal(newSubGoalData);
+      if (response.statusCode == 200) {
+        await _loadGoals();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('하위 목표 추가 실패: (코드: ${response.statusCode})')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('네트워크 오류가 발생했습니다.')),
+      );
+    }
   }
 
-  void _toggleExpanded(String goalId) {
+  void _toggleExpanded(int goalId) {
     setState(() {
       final index = _goals.indexWhere((g) => g.id == goalId);
       if (index == -1) return;
@@ -124,17 +336,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
     });
   }
 
-  void _deleteGoal(String goalId) {
-    setState(() {
-      _goals.removeWhere((g) => g.id == goalId);
-      //  ScaffoldMessenger.of(context).showSnackBar(
-      //   SnackBar(content: Text('"${goal.title}" 목표가 삭제되었습니다.')),
-      // );
-    });
-  }
 
-  void _showGoalOptionsDialog(String goalId) {
-    final goal = _goals.firstWhere((g) => g.id == goalId, orElse: () => Goal(id: 'unknown', title: '알 수 없는 목표', createdAt: DateTime.now()));
+  void _showGoalOptionsDialog(int goalId) {
+    final goal = _goals.firstWhere((g) => g.id == goalId, orElse: () => Goal(id: -1, title: '알 수 없는 목표', createdAt: DateTime.now()));
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -169,59 +373,18 @@ class _GoalsScreenState extends State<GoalsScreen> {
     );
   }
 
-  Future<void> _editGoal(String goalId) async {
-    final index = _goals.indexWhere((g) => g.id == goalId);
-    if (index == -1) return;
-    final goal = _goals[index];
-    final result = await showDialog<_GoalEditResult>(
-      context: context,
-      builder: (context) => _EditGoalDialog(
-        initialTitle: goal.title,
-        initialDeadline: goal.deadline,
-        initialSubGoals: goal.subGoals,
-      ),
-    );
-    if (result == null) return;
+  void _loadMotivationMessage() async {
     setState(() {
-      _goals[index] = goal.copyWith(title: result.title, deadline: result.deadline, subGoals: result.subGoals);
-      _applySort();
-    });
-  }
-
-  void _addGoal() async {
-    final result = await showDialog<_GoalDraft>(
-      context: context,
-      builder: (context) => const _AddGoalDialog(),
-    );
-    if (result == null) return;
-    setState(() {
-      _goals.add(
-        Goal(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          title: result.title,
-          createdAt: DateTime.now(),
-          deadline: result.deadline,
-          subGoals: result.subGoals
-              .map((t) => SubGoal(
-                    id: UniqueKey().toString(),
-                    title: t,
-                    createdAt: DateTime.now(),
-                  ))
-              .toList(),
-        ),
-      );
-      _applySort();
+      _motivationMessage = '오늘도 한 걸음, 목표에 가까워지고 있어요.';
     });
   }
 
   void _applySort() {
     setState(() {
       _goals.sort((a, b) {
-        // 완료된 목표는 항상 하단으로
         if (a.isCompleted != b.isCompleted) {
           return a.isCompleted ? 1 : -1;
         }
-        // 미완료/완료 그룹 내부에서는 선택된 정렬 기준 적용
         switch (_sortOption) {
           case GoalSortOption.deadlineAsc:
             final ad = a.dDay ?? 1 << 30;
@@ -261,30 +424,52 @@ class _GoalsScreenState extends State<GoalsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: Text('목표', style: GoogleFonts.inter(fontSize: 25, fontWeight: FontWeight.w500, color: const Color(0xFFFF504A))),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        title: Text(
+          '목표',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFFFF6B6B),
+          ),
+        ),
         actions: [
-          PopupMenuButton<GoalSortOption>(
-            icon: const Icon(Icons.sort, color: Colors.white),
-            color: Colors.grey[900],
-            onSelected: (v) {
-              _sortOption = v;
-              _applySort();
-            },
-            itemBuilder: (context) => [
-              _menuItem('마감일 순(가까운 순)', GoalSortOption.deadlineAsc),
-              _menuItem('마감일 순(먼 순)', GoalSortOption.deadlineDesc),
-              _menuItem('최신순', GoalSortOption.newest),
-              _menuItem('오래된순', GoalSortOption.oldest),
-              _menuItem('이름순', GoalSortOption.name),
-            ],
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: PopupMenuButton<GoalSortOption>(
+              icon: const Icon(Icons.sort, color: Colors.white, size: 20),
+              color: Colors.grey[900],
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              onSelected: (v) {
+                _sortOption = v;
+                _applySort();
+              },
+              itemBuilder: (context) => [
+                _menuItem('마감일 순(가까운 순)', GoalSortOption.deadlineAsc),
+                _menuItem('마감일 순(먼 순)', GoalSortOption.deadlineDesc),
+                _menuItem('최신순', GoalSortOption.newest),
+                _menuItem('오래된순', GoalSortOption.oldest),
+                _menuItem('이름순', GoalSortOption.name),
+              ],
+            ),
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFFF6B6B),
+                strokeWidth: 2.5,
+              ),
+            )
+          : ListView.builder(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         itemCount: _goals.length + 2,
         itemBuilder: (context, index) {
           if (index == 0) {
@@ -298,9 +483,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
             goal: goal,
             dDayLabel: _dDayLabel(goal),
             onToggleCompleted: (v) => _toggleGoalCompleted(goal.id, v),
-            onLongPress: () => _showGoalOptionsDialog(goal.id), // Changed from onLongPressDelete
+            onLongPress: () => _showGoalOptionsDialog(goal.id),
             onToggleExpanded: () => _toggleExpanded(goal.id),
-            onToggleSubCompleted: (subId, v) => _toggleSubGoalCompleted(goal.id, subId, v),
+            onToggleSubCompleted: (subId, v) => _toggleSubGoalCompleted(subId, v),
             onAddSubGoal: () => _addSubGoal(goal.id),
           );
         },
@@ -313,7 +498,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
               transitionDuration: Duration.zero,
               reverseTransitionDuration: Duration.zero,
             ),
-            (route) => false,
+                (route) => false,
           );
         }
         if (i == 0) {
@@ -323,7 +508,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
               transitionDuration: Duration.zero,
               reverseTransitionDuration: Duration.zero,
             ),
-            (route) => false,
+                (route) => false,
           );
         }
       }),
@@ -331,43 +516,57 @@ class _GoalsScreenState extends State<GoalsScreen> {
   }
 
   PopupMenuItem<GoalSortOption> _menuItem(String label, GoalSortOption v) => PopupMenuItem(
-        value: v,
-        child: Text(label, style: GoogleFonts.notoSans(color: Colors.white)),
-      );
+    value: v,
+    child: Text(label, style: GoogleFonts.notoSans(color: Colors.white)),
+  );
 }
 
 class _GoalCard extends StatelessWidget {
   final Goal goal;
   final String dDayLabel;
   final ValueChanged<bool> onToggleCompleted;
-  final VoidCallback onLongPress; // Renamed from onLongPressDelete
+  final VoidCallback onLongPress;
   final VoidCallback onToggleExpanded;
-  final void Function(String subId, bool value) onToggleSubCompleted;
+  final void Function(int subId, bool value) onToggleSubCompleted;
   final VoidCallback onAddSubGoal;
 
   const _GoalCard({
     required this.goal,
     required this.dDayLabel,
     required this.onToggleCompleted,
-    required this.onLongPress, // Renamed from onLongPressDelete
+    required this.onLongPress,
     required this.onToggleExpanded,
     required this.onToggleSubCompleted,
     required this.onAddSubGoal,
-    super.key, // Added super.key
+    super.key,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onLongPress: onLongPress, // Used the renamed parameter
+      onLongPress: onLongPress,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: const [
-            BoxShadow(color: Colors.black26, blurRadius: 24, offset: Offset(0, 8)),
+          color: goal.isCompleted 
+              ? Colors.white.withOpacity(0.03) 
+              : Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: goal.isCompleted 
+                ? Colors.white.withOpacity(0.08) 
+                : const Color(0xFFFF6B6B).withOpacity(0.2),
+            width: goal.isCompleted ? 1 : 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: goal.isCompleted 
+                  ? Colors.black
+                  : const Color(0xFFFF6B6B).withOpacity(0.08),
+              blurRadius: goal.isCompleted ? 4 : 12,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Column(
@@ -379,55 +578,112 @@ class _GoalCard extends StatelessWidget {
                   value: goal.isCompleted,
                   onChanged: (v) => onToggleCompleted(v ?? false),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(
-                  child: Text(
-                    '$dDayLabel | ${goal.title}',
-                    style: TextStyle(
-                      decoration: goal.isCompleted ? TextDecoration.lineThrough : null,
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                                                     Container(
+                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                             decoration: BoxDecoration(
+                               color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                               borderRadius: BorderRadius.circular(8),
+                             ),
+                             child: Text(
+                               dDayLabel,
+                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                 color: const Color(0xFFFF6B6B),
+                                 fontWeight: FontWeight.w600,
+                                 fontSize: 10,
+                               ),
+                             ),
+                           ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              goal.title,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                decoration: goal.isCompleted ? TextDecoration.lineThrough : null,
+                                color: goal.isCompleted ? Colors.white60 : Colors.white,
+                                fontWeight: FontWeight.w600,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (goal.subGoals.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          '하위 목표 ${goal.subGoals.where((s) => s.isCompleted).length}/${goal.subGoals.length} 완료',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.white60,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 IconButton(
-                  icon: Icon(goal.isExpanded ? Icons.expand_less : Icons.expand_more, color: Colors.white),
+                  icon: Icon(
+                    goal.isExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: Colors.white70,
+                    size: 24,
+                  ),
                   onPressed: onToggleExpanded,
                 ),
               ],
             ),
-            if (goal.isExpanded) ...[
-              const SizedBox(height: 8),
-              for (final sub in goal.subGoals)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8, top: 6, bottom: 6),
-                  child: Row(
-                    children: [
-                      _SquareCheckbox(
-                        value: sub.isCompleted,
-                        onChanged: (v) => onToggleSubCompleted(sub.id, v ?? false),
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _subGoalDDayLabel(sub).isNotEmpty
-                              ? '${_subGoalDDayLabel(sub)} | ${sub.title}'
-                              : sub.title,
-                          style: _subGoalTextStyle(sub),
+                         if (goal.isExpanded) ...[
+               const SizedBox(height: 12),
+               Container(
+                 padding: const EdgeInsets.all(12),
+                 decoration: BoxDecoration(
+                   color: Colors.white.withOpacity(0.04),
+                   borderRadius: BorderRadius.circular(12),
+                   border: Border.all(color: Colors.white.withOpacity(0.08)),
+                 ),
+                child: Column(
+                  children: [
+                    for (final sub in goal.subGoals)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(
+                          children: [
+                            _SquareCheckbox(
+                              value: sub.isCompleted,
+                              onChanged: (v) => onToggleSubCompleted(sub.id, v ?? false),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _subGoalDDayLabel(sub).isNotEmpty
+                                    ? '${_subGoalDDayLabel(sub)} | ${sub.title}'
+                                    : sub.title,
+                                style: _subGoalTextStyle(sub),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              Padding(
-                padding: const EdgeInsets.only(left: 4, top: 4),
-                child: TextButton.icon(
-                  onPressed: onAddSubGoal,
-                  icon: const Icon(Icons.add, color: Colors.white70, size: 18),
-                  label: const Text('하위 목표 추가', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                  style: TextButton.styleFrom(foregroundColor: Colors.white70),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        onPressed: onAddSubGoal,
+                        icon: const Icon(Icons.add_circle_outline, color: Colors.white70, size: 18),
+                        label: const Text('하위 목표 추가', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white70,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -447,52 +703,100 @@ class _SquareCheckbox extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.size = 23,
-    super.key, // Added super.key
+    super.key,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: value ? const Color(0xFFFF504A) : Colors.transparent,
-          border: Border.all(color: Colors.white, width: 2),
-          borderRadius: BorderRadius.circular(4),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        borderRadius: BorderRadius.circular(5),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: value ? const Color(0xFFFF6B6B) : Colors.transparent,
+            border: Border.all(
+              color: value ? const Color(0xFFFF6B6B) : Colors.white70,
+              width: 1.5,
+            ),
+            borderRadius: BorderRadius.circular(5),
+            boxShadow: value ? [
+              BoxShadow(
+                color: const Color(0xFFFF6B6B).withOpacity(0.25),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ] : null,
+          ),
+          child: value 
+              ? Icon(
+                  Icons.check,
+                  size: size * 0.65,
+                  color: Colors.white,
+                )
+              : null,
         ),
-        child: value ? const Icon(Icons.check, size: 16, color: Colors.white) : null,
       ),
     );
   }
 }
 
-// 공통 하단 네비게이션은 widgets/app_bottom_nav.dart 로 이동
-
 class _Header extends StatelessWidget {
   final String dateLabel;
   final String? message;
-  const _Header({required this.dateLabel, required this.message, super.key}); // Added super.key
+  const _Header({required this.dateLabel, required this.message, super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 2, right: 2, top: 8, bottom: 8),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.15),
+          width: 1,
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(dateLabel, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  dateLabel,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFFFF6B6B),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           Center(
             child: Text(
-              message ?? '동기부여 메시지 불러오는 중... (연동 예정)',
+              message ?? '오늘도 한 걸음, 목표에 가까워지고 있어요.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.notoSans(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700, height: 1.3),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+                height: 1.3,
+              ),
             ),
           ),
-          const SizedBox(height: 12),
         ],
       ),
     );
@@ -501,27 +805,49 @@ class _Header extends StatelessWidget {
 
 class _AddMainGoalTile extends StatelessWidget {
   final VoidCallback onTap;
-  const _AddMainGoalTile({required this.onTap, super.key}); // Added super.key
+  const _AddMainGoalTile({required this.onTap, super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 12),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(12),
+            color: const Color(0xFFFF6B6B).withOpacity(0.08),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: const Color(0xFFFF6B6B).withOpacity(0.2),
+              width: 1.5,
+              style: BorderStyle.solid,
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Icon(Icons.add, color: Colors.white70),
-              SizedBox(width: 6),
-              Text('목표 추가', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.add,
+                  color: Color(0xFFFF6B6B),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '새로운 목표 추가하기',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: const Color(0xFFFF6B6B),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -529,7 +855,6 @@ class _AddMainGoalTile extends StatelessWidget {
     );
   }
 }
-// 하위 목표용 디데이 레이블 함수
 String _subGoalDDayLabel(SubGoal sub) {
   final d = sub.dDay;
   if (d == null) return '';
@@ -546,7 +871,7 @@ TextStyle _subGoalTextStyle(SubGoal sub) {
 }
 
 class _AddSubGoalDialog extends StatefulWidget {
-  const _AddSubGoalDialog({super.key}); // Added super.key
+  const _AddSubGoalDialog({super.key});
 
   @override
   State<_AddSubGoalDialog> createState() => _AddSubGoalDialogState();
@@ -554,7 +879,7 @@ class _AddSubGoalDialog extends StatefulWidget {
 
 class _AddSubGoalDialogState extends State<_AddSubGoalDialog> {
   final TextEditingController _controller = TextEditingController();
-  DateTime? _deadline;  // 하위 목표 디데이
+  DateTime? _deadline;
 
   @override
   void dispose() {
@@ -573,14 +898,12 @@ class _AddSubGoalDialogState extends State<_AddSubGoalDialog> {
           children: [
             TextField(
               controller: _controller,
-              decoration: const InputDecoration(labelText: '하위 목표 제목', labelStyle: TextStyle(color: Colors.white70)
-              ),
+              decoration: const InputDecoration(labelText: '하위 목표 제목', labelStyle: TextStyle(color: Colors.white70)),
               style: const TextStyle(color: Colors.white),
               autofocus: true,
               onSubmitted: (v) => _submit(),
             ),
             const SizedBox(height: 8),
-            // 마감일 선택 위젯 추가
             Row(
               children: [
                 Expanded(
@@ -617,8 +940,6 @@ class _AddSubGoalDialogState extends State<_AddSubGoalDialog> {
   void _submit() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    // Navigator.pop(context, text);
-    //  결과값을 Map 형태로 반환
     Navigator.pop(context, {'title': text, 'deadline': _deadline});
   }
 }
@@ -636,7 +957,7 @@ class _GoalDraft {
 }
 
 class _AddGoalDialog extends StatefulWidget {
-  const _AddGoalDialog({super.key}); // Added super.key
+  const _AddGoalDialog({super.key});
 
   @override
   State<_AddGoalDialog> createState() => _AddGoalDialogState();
@@ -646,12 +967,10 @@ class _AddGoalDialogState extends State<_AddGoalDialog> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _subController = TextEditingController();
   DateTime? _deadline;
-  final List<String> _subs = [];
 
   @override
   void dispose() {
     _titleController.dispose();
-    _subController.dispose();
     super.dispose();
   }
 
@@ -694,30 +1013,6 @@ class _AddGoalDialogState extends State<_AddGoalDialog> {
                 ),
               ],
             ),
-            const Divider(color: Colors.white24),
-            TextField(
-              controller: _subController,
-              decoration: const InputDecoration(labelText: '하위 목표 추가', labelStyle: TextStyle(color: Colors.white70)),
-              style: const TextStyle(color: Colors.white),
-              onSubmitted: (v) {
-                if (v.trim().isEmpty) return;
-                setState(() {
-                  _subs.add(v.trim());
-                  _subController.clear();
-                });
-              },
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _subs
-                  .map((s) => Chip(
-                        label: Text(s),
-                        onDeleted: () => setState(() => _subs.remove(s)),
-                      ))
-                  .toList(),
-            ),
           ],
         ),
       ),
@@ -727,7 +1022,7 @@ class _AddGoalDialogState extends State<_AddGoalDialog> {
           onPressed: () {
             final title = _titleController.text.trim();
             if (title.isEmpty) return;
-            Navigator.pop(context, _GoalDraft(title, _deadline, _subs));
+            Navigator.pop(context, _GoalDraft(title, _deadline, []));
           },
           child: const Text('추가'),
         ),
@@ -743,11 +1038,19 @@ class _GoalEditResult {
   const _GoalEditResult(this.title, this.deadline, this.subGoals);
 }
 
+// 메인 목표 수정 UI
 class _EditGoalDialog extends StatefulWidget {
   final String initialTitle;
   final DateTime? initialDeadline;
   final List<SubGoal> initialSubGoals;
-  const _EditGoalDialog({required this.initialTitle, required this.initialDeadline, required this.initialSubGoals});
+  final int mainGoalId;
+
+  const _EditGoalDialog({
+    required this.initialTitle,
+    required this.initialDeadline,
+    required this.initialSubGoals,
+    required this.mainGoalId,
+  });
 
   @override
   State<_EditGoalDialog> createState() => _EditGoalDialogState();
@@ -764,7 +1067,6 @@ class _EditGoalDialogState extends State<_EditGoalDialog> {
     super.initState();
     _titleController = TextEditingController(text: widget.initialTitle);
     _deadline = widget.initialDeadline;
-    _subs = List<SubGoal>.from(widget.initialSubGoals);
   }
 
   @override
@@ -813,31 +1115,6 @@ class _EditGoalDialogState extends State<_EditGoalDialog> {
                 ),
               ],
             ),
-            const Divider(color: Colors.white24),
-            Text('하위 목표', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _newSubController,
-                    decoration: const InputDecoration(labelText: '하위 목표 추가', labelStyle: TextStyle(color: Colors.white70)),
-                    style: const TextStyle(color: Colors.white),
-                    onSubmitted: (v) => _addSub(),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add, color: Colors.white70),
-                  onPressed: _addSub,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ..._subs.map((s) => _EditableSubGoalTile(
-                  sub: s,
-                  onChanged: (text) => _renameSub(s.id, text),
-                  onDelete: () => _removeSub(s.id),
-                )),
           ],
         ),
       ),
@@ -855,27 +1132,75 @@ class _EditGoalDialogState extends State<_EditGoalDialog> {
     );
   }
 
-  void _addSub() {
+  void _addSub() async {
     final text = _newSubController.text.trim();
     if (text.isEmpty) return;
-    setState(() {
-      _subs.add(SubGoal(id: UniqueKey().toString(), title: text, createdAt: DateTime.now()));
-      _newSubController.clear();
-    });
+
+    final newSubGoalData = {
+      'mainGoalId': widget.mainGoalId,
+      'content': text,
+      'checked': false,
+    };
+
+    try {
+      final response = await ApiService.createSubGoal(newSubGoalData);
+      if (response.statusCode == 200) {
+        final newSubGoalJson = jsonDecode(utf8.decode(response.bodyBytes))['data'];
+        setState(() {
+          _subs.add(SubGoal.fromJson(newSubGoalJson));
+          _newSubController.clear();
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('하위 목표 추가 실패: (코드: ${response.statusCode})')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('네트워크 오류가 발생했습니다.')),
+      );
+    }
   }
 
-  void _renameSub(String id, String text) {
-    setState(() {
-      _subs = _subs
-          .map((s) => s.id == id ? s.copyWith(title: text) : s)
-          .toList(growable: false);
-    });
+  void _renameSub(int id, String text) async {
+    final updateData = {
+      'content': text,
+    };
+    try {
+      final response = await ApiService.updateSubGoal(id.toString(), updateData);
+      if (response.statusCode == 200) {
+        setState(() {
+          _subs = _subs.map((s) => s.id == id ? s.copyWith(title: text) : s).toList();
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('하위 목표 이름 변경 실패: (코드: ${response.statusCode})')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('네트워크 오류가 발생했습니다.')),
+      );
+    }
   }
 
-  void _removeSub(String id) {
-    setState(() {
-      _subs.removeWhere((s) => s.id == id);
-    });
+  void _removeSub(int id) async {
+    try {
+      final response = await ApiService.deleteSubGoal(id.toString());
+      if (response.statusCode == 200) {
+        setState(() {
+          _subs.removeWhere((s) => s.id == id);
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('하위 목표 삭제 실패: (코드: ${response.statusCode})')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('네트워크 오류가 발생했습니다.')),
+      );
+    }
   }
 }
 

@@ -1,170 +1,405 @@
-// lib/main.dart
+import 'dart:convert';
+import 'dart:math';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-// 우리가 만들었던 첫 번째 회원가입 화면 파일을 import 합니다.
-// 파일 경로는 실제 프로젝트 구조에 맞게 조정해야 할 수 있습니다.
-import 'screens/signup_step1_screen.dart';
-import 'screens/goals_screen.dart';
-import 'services/usage_reporter.dart';
-import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';  // 로그인 상태를 확인하기 위해 추가합니다.
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-// 모든 Flutter 앱의 시작점!
-void main() {
-  // MyApp 위젯을 화면에 표시하면서 앱을 시작합니다.
+import 'screens/goals_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
+import 'screens/permission_request_screen.dart';
+import 'services/api_service.dart';
+import 'services/harmful_app_service.dart';
+
+// --- Global Keys & Services --- //
+
+// 앱의 어느 곳에서든 Navigator 상태에 접근하기 위한 GlobalKey
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+// 로컬 알림 플러그인 인스턴스
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+// --- FCM 설정 --- //
+
+// 공통 로그 출력 함수
+void _logFcmMessage(String event, RemoteMessage message) {
+  if (kDebugMode) {
+    print('--- FCM $event ---');
+    print('Message ID: ${message.messageId}');
+    if (message.data.isNotEmpty) {
+      print('  Data Payload: ${message.data}');
+    }
+    print('-------------------');
+  }
+}
+
+// data 페이로드로부터 내용을 파싱하는 함수
+String _parseNotificationBody(Map<String, dynamic> data) {
+  final dynamic bodyData = data['body'];
+  String notificationBody = '내용 없음';
+
+  if (bodyData is String) {
+    try {
+      final bodyJson = jsonDecode(bodyData);
+      if (bodyJson is Map<String, dynamic>) {
+        notificationBody = bodyJson['content'] as String? ?? bodyData;
+      }
+    } catch (e) {
+      notificationBody = bodyData;
+    }
+  } else if (bodyData is Map) {
+    notificationBody = bodyData['content'] as String? ?? '내용 없음';
+  }
+  return notificationBody;
+}
+
+// 백그라운드 알림 표시 함수 (상단 배너)
+void _showHeadsUpNotification(Map<String, dynamic> data) {
+  final String title = data['title'] as String? ?? '새로운 알림';
+  final String body = _parseNotificationBody(data);
+
+  final int notificationId = Random().nextInt(2147483647);
+
+  flutterLocalNotificationsPlugin.show(
+    notificationId,
+    title,
+    body,
+    NotificationDetails(
+      android: AndroidNotificationDetails(
+        channel.id,
+        channel.name,
+        channelDescription: channel.description,
+        icon: 'launch_background',
+        importance: Importance.max, // 헤드업 알림을 위해 중요도 최대로 설정
+        priority: Priority.high,   // 헤드업 알림을 위해 우선순위 최대로 설정
+      ),
+    ),
+  );
+}
+
+// 백그라운드 메시지 핸들러
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  _logFcmMessage('Background Message', message);
+  await setupFlutterNotifications();
+  _showHeadsUpNotification(message.data);
+}
+
+// 알림 채널
+const AndroidNotificationChannel channel = AndroidNotificationChannel(
+  'high_importance_channel',
+  'High Importance Notifications',
+  description: 'This channel is used for important notifications.',
+  importance: Importance.max,
+);
+
+// 로컬 알림 플러그인 초기화 (중복 방지)
+bool _isFlutterLocalNotificationsInitialized = false;
+Future<void> setupFlutterNotifications() async {
+  if (_isFlutterLocalNotificationsInitialized) return;
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(channel);
+  _isFlutterLocalNotificationsInitialized = true;
+}
+
+// FCM 전체 설정
+Future<void> setupFCM() async {
+  await setupFlutterNotifications();
+
+  final messaging = FirebaseMessaging.instance;
+  await messaging.requestPermission(alert: true, badge: true, sound: true);
+
+  // Foreground 메시지 리스너 (인앱 팝업 처리)
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    _logFcmMessage('Foreground Message', message);
+
+    final BuildContext? context = navigatorKey.currentContext;
+    if (context != null) {
+      final String title = message.data['title'] ?? '새로운 알림';
+      final String body = _parseNotificationBody(message.data);
+
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text(title),
+          content: Text(body),
+          actions: [
+            TextButton(
+              child: const Text('확인'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+      );
+    }
+  });
+
+  // 알림 클릭 시 이벤트 처리
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    _logFcmMessage('Notification Clicked', message);
+  });
+
+  // 앱 시작 시 토큰 처리
+  final settings = await messaging.getNotificationSettings();
+  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+    final fcmToken = await messaging.getToken();
+    print("FCM Token: $fcmToken");
+
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString('accessToken');
+
+    if (fcmToken != null && accessToken != null) {
+      try {
+        await ApiService.saveFCMToken(fcmToken);
+      } catch (e) {
+        print('FCM 토큰 서버 저장 실패: $e');
+      }
+    }
+
+    messaging.onTokenRefresh.listen((newToken) async {
+      if (accessToken != null) {
+        print('FCM 토큰 갱신: $newToken');
+        await ApiService.saveFCMToken(newToken);
+      }
+    });
+  }
+}
+
+// --- 앱 시작점 --- //
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  await Firebase.initializeApp();
+
+  // 카카오 SDK 초기화
+  try {
+    final nativeAppKey = dotenv.env['KAKAO_NATIVE_APP_KEY'];
+    final javaScriptAppKey = dotenv.env['KAKAO_JAVASCRIPT_APP_KEY'];
+    
+    if (nativeAppKey == null || nativeAppKey.isEmpty) {
+      throw Exception('KAKAO_NATIVE_APP_KEY 환경변수가 설정되지 않았습니다.');
+    }
+    if (javaScriptAppKey == null || javaScriptAppKey.isEmpty) {
+      throw Exception('KAKAO_JAVASCRIPT_APP_KEY 환경변수가 설정되지 않았습니다.');
+    }
+    
+    KakaoSdk.init(
+      nativeAppKey: nativeAppKey,
+      javaScriptAppKey: javaScriptAppKey,
+    );
+    print('카카오 SDK 초기화 성공');
+  } catch (e) {
+    print('카카오 SDK 초기화 실패: $e');
+  }
+
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  await setupFCM();
+
+  final prefs = await SharedPreferences.getInstance();
+  if (prefs.getString('accessToken') != null) {
+    await HarmfulAppService.start();
+  }
+
   runApp(const MyApp());
 }
 
-// 우리 앱의 최상위 루트 위젯입니다.
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // MaterialApp은 앱의 기본 구조와 디자인(머티리얼 디자인)을 제공합니다.
     return MaterialApp(
-      title: 'Digital Detox App', // 앱의 제목
+      title: 'Digital Minimalism',
       theme: ThemeData(
-        // 앱의 전반적인 테마를 설정할 수 있습니다. (예: 색상, 폰트 등)
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFFFF504A),
+          brightness: Brightness.dark,
+          surface: const Color(0xFF1A1A1A),
+          background: const Color(0xFF0A0A0A),
+          onSurface: Colors.white,
+          onBackground: Colors.white,
+        ),
+        scaffoldBackgroundColor: const Color(0xFF0A0A0A),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF1A1A1A),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFF504A),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.white,
+            side: const BorderSide(color: Colors.white24, width: 1.5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFF1A1A1A),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.white24, width: 1.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFFF504A), width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFFF6B6B), width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          hintStyle: const TextStyle(
+            color: Colors.white54,
+            fontSize: 16,
+          ),
+        ),
+        textTheme: const TextTheme(
+          headlineLarge: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+          headlineMedium: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+          titleLarge: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+          bodyLarge: TextStyle(
+            fontSize: 16,
+            color: Colors.white,
+          ),
+          bodyMedium: TextStyle(
+            fontSize: 14,
+            color: Colors.white70,
+          ),
+        ),
       ),
-      // 앱이 처음 시작될 때 보여줄 화면을 지정합니다.
-      home: const InitialScreenDecider(), // InitialScreenDecider로 변경
+      home: const PermissionCheckScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
 
-// 앱 시작 시 로그인 상태를 확인하고 화면을 분기하는 위젯
-class InitialScreenDecider extends StatefulWidget {
-  const InitialScreenDecider({super.key});
+class PermissionCheckScreen extends StatefulWidget {
+  const PermissionCheckScreen({super.key});
 
   @override
-  State<InitialScreenDecider> createState() => _InitialScreenDeciderState();
+  State<PermissionCheckScreen> createState() => _PermissionCheckScreenState();
 }
 
-class _InitialScreenDeciderState extends State<InitialScreenDecider> {
-  bool _isLoggedIn = false;
+class _PermissionCheckScreenState extends State<PermissionCheckScreen> {
   bool _isLoading = true;
+  bool _permissionsGranted = false;
 
   @override
   void initState() {
     super.initState();
-    _checkLoginStatus();
+    _checkPermissions();
   }
 
-  // SharedPreferences에서 로그인 토큰이 있는지 확인하는 비동기 함수
-  Future<void> _checkLoginStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final accessToken = prefs.getString('accessToken'); // 'accessToken' 키에 저장된 값 확인
+  Future<void> _checkPermissions() async {
+    try {
+      // 먼저 저장된 권한 상태 확인
+      final prefs = await SharedPreferences.getInstance();
+      final savedPermissionsGranted = prefs.getBool('permissions_granted') ?? false;
+      
+      if (savedPermissionsGranted) {
+        // 저장된 상태가 있으면 바로 메인 화면으로 이동 (권한 재확인 없이)
+        setState(() {
+          _permissionsGranted = true;
+          _isLoading = false;
+        });
+      } else {
+        // 저장된 상태가 없으면 권한 상태 확인
+        final permissions = [
+          Permission.notification,
+          Permission.location,
+          Permission.camera,
+          Permission.microphone,
+          Permission.storage,
+        ];
 
-    setState(() {
-      _isLoggedIn = accessToken != null;
-      _isLoading = false;
-    });
+        bool allGranted = true;
+        for (final permission in permissions) {
+          final status = await permission.status;
+          if (!status.isGranted && !status.isLimited) {
+            allGranted = false;
+            break;
+          }
+        }
+
+        // 모든 권한이 이미 허용된 경우 상태 저장
+        if (allGranted) {
+          await prefs.setBool('permissions_granted', true);
+          await prefs.setString('permissions_granted_date', DateTime.now().toIso8601String());
+        }
+
+        setState(() {
+          _permissionsGranted = allGranted;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('권한 확인 중 오류: $e');
+      setState(() {
+        _permissionsGranted = false;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // 로딩 중일 때 로딩 인디케이터를 보여줍니다.
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: Colors.black,
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xFFFF504A)),
+          child: CircularProgressIndicator(
+            color: Color(0xFFFF504A),
+          ),
         ),
       );
     }
 
-    // 로그인 상태에 따라 다른 화면을 반환합니다.
-    if (_isLoggedIn) {
-      // 로그인 되어 있으면 목표 화면으로 이동
-      return const AppLifecycleHandler(child: GoalsScreen());
-    } else {
-      // 로그인 안 되어 있으면 회원가입/로그인 화면으로 이동
-      return const AppLifecycleHandler(child: SignupStep1Screen());
-    }
+    // 권한이 이미 허용된 경우 메인 화면으로, 그렇지 않으면 권한 요청 화면으로
+    return _permissionsGranted ? const GoalsScreen() : const PermissionRequestScreen();
   }
-}
-
-
-class AppLifecycleHandler extends StatefulWidget {
-  final Widget child;
-  const AppLifecycleHandler({required this.child, super.key});
-
-  @override
-  State<AppLifecycleHandler> createState() => _AppLifecycleHandlerState();
-}
-
-class _AppLifecycleHandlerState extends State<AppLifecycleHandler> with WidgetsBindingObserver {
-  UsageReporter? _reporter;
-  static const _usageCh = MethodChannel('app.usage/access');
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _initReporter();
-  }
-
-  Future<void> _initReporter() async {
-    try {
-      final granted = await _usageCh.invokeMethod<bool>('isUsageAccessGranted') ?? false;
-      if (!granted) return;
-      _reporter = UsageReporter(
-        interval: const Duration(seconds: 5),
-        targets: {
-          'com.google.android.youtube', // YouTube
-          'com.instagram.android',      // Instagram
-          'com.zhiliaoapp.musically',   // TikTok (참고)
-        },
-        onTargetDetected: (pkg) {
-          // TODO: 백엔드로 전송 (현재는 로그 대체)
-          // Api.post('/usage/detected', { 'package': pkg, 'at': DateTime.now().toIso8601String() })
-          debugPrint('Detected foreground target: $pkg');
-        },
-      );
-      await _reporter!.start();
-
-      // 일일 집계 샘플: 자정 기준 전일 사용량 전송
-      final now = DateTime.now();
-      final begin = DateTime(now.year, now.month, now.day);
-      final end = now;
-      final summary = await UsageReporter.fetchUsageSummary(
-        begin: begin,
-        end: end,
-        packages: {
-          'com.google.android.youtube',
-          'com.instagram.android',
-          'com.zhiliaoapp.musically',
-        },
-      );
-      debugPrint('Usage summary(ms): $summary');
-      // TODO: 백엔드로 summary 전송
-      // Api.post('/usage/summary', {
-      //   'begin': begin.toIso8601String(),
-      //   'end': end.toIso8601String(),
-      //   'data': summary,
-      // })
-    } catch (_) {}
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      _reporter?.stop();
-    } else if (state == AppLifecycleState.resumed) {
-      _initReporter();
-    }
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _reporter?.stop();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }

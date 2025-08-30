@@ -30,15 +30,26 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.5.0
-  google_fonts: ^6.2.1
-  font_awesome_flutter: ^10.7.0
-  permission_handler: ^12.0.1
+  cupertino_icons: ^1.0.2
   shared_preferences: ^2.2.2
-
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
+  http: ^1.1.0
+  google_fonts: ^6.1.0
+  permission_handler: ^12.0.1
+  firebase_core: ^4.0.0
+  firebase_messaging: ^16.0.0
+  # 위치 검색을 위한 패키지들
+  google_maps_flutter: ^2.5.3
+  geolocator: ^10.1.0
+  geocoding: ^2.1.1
+  # Kakao Local API 사용을 위한 패키지
+  dio: ^5.4.0
+  # 환경 변수 관리
+  flutter_dotenv: ^5.1.0
+  flutter_local_notifications: ^19.4.1
+  # 소셜 로그인
+  google_sign_in: ^6.2.1
+  kakao_flutter_sdk_user: ^1.9.7+3
+  flutter_naver_login : ^2.1.0
 
 dev_dependencies:
   flutter_test:
@@ -61,6 +72,12 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # 환경 변수 파일 포함
+  assets:
+    - .env
+    - .env.example
+    - assets/images/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
